@@ -920,16 +920,20 @@ end
 
 local function applyAnime()
     local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not (hum and hrp) then return false end
-    removeAnime()
+    if not char then return false, "no character" end
+    local hrp = char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart", 5)
+    if not hrp then return false, "no HumanoidRootPart" end
 
-    local isR15 = hum.RigType == Enum.HumanoidRigType.R15
-    local rel = restTable(char, hrp)
+    local isR15 = char:FindFirstChild("UpperTorso") ~= nil
     local foot = char:FindFirstChild(isR15 and "LeftFoot" or "Left Leg")
     local head = char:FindFirstChild("Head")
-    if not (foot and head and rel[foot] and rel[head]) then return false end
+    if not (foot and head) then return false, "body parts not found" end
+    removeAnime()
+
+    local rel = restTable(char, hrp)
+    for _, d in ipairs(char:GetChildren()) do
+        if d:IsA("BasePart") and not rel[d] then rel[d] = hrp.CFrame:ToObjectSpace(d.CFrame) end
+    end
 
     local footBottom = rel[foot].Position.Y - foot.Size.Y / 2
     local headTop = rel[head].Position.Y + head.Size.Y / 2
@@ -965,10 +969,12 @@ animeEntry = addToggle(model, "Anime Model", "Replaces your avatar with a 3D mod
         end
         animeOn = true
         task.spawn(function()
-            if not applyAnime() then
+            local ran, ok, reason = pcall(applyAnime)
+            if not (ran and ok) then
                 animeOn = false
                 animeEntry.Set(false)
-                notify("Anime Model: character not ready, try again")
+                removeAnime()
+                notify("Anime Model: " .. tostring(ran and reason or ok))
             end
         end)
     else

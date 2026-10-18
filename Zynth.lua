@@ -651,6 +651,10 @@ local function addToggle(card, name, desc, default, bind, callback)
     end)
 
     local entry = {Name = name:lower(), Frame = row, Card = card}
+    entry.Set = function(v)
+        on = v
+        setSwitch(v)
+    end
     table.insert(rows, entry)
     return entry
 end
@@ -764,6 +768,222 @@ local other = createCard(Col2, "Other", 2)
 addToggle(other, "No Slot Change", nil, false, nil)
 addToggle(other, "Anti Bot", nil, false, nil)
 addToggle(other, "No Friend Damage", nil, true, nil)
+
+local ANIME_DIR = "ZynthAnime/"
+local ANIME_REF_H = 1.46
+local ANIME = {
+    {"Head", 0, -0.0013, 1.3799, 0.0222, 2.1096, 2.4829, 2.3100},
+    {"Head", 1, -0.0002, 1.3691, 0.0225, 1.8655, 2.2769, 2.0335},
+    {"UpperTorso", 0, 0.0002, 1.1150, -0.0203, 2.4607, 3.3522, 1.9418},
+    {"LowerTorso", 0, -0.0021, 0.8256, 0.0115, 3.7125, 3.1855, 2.7229},
+    {"LeftUpperArm", 0, -0.0897, 1.0661, 0.0056, 1.1181, 2.0610, 1.1263},
+    {"LeftLowerArm", 0, -0.0956, 0.9049, 0.0065, 0.5741, 2.2623, 0.7068},
+    {"LeftHand", 0, -0.0946, 0.7324, -0.0275, 0.3763, 1.3502, 1.0667},
+    {"RightUpperArm", 0, 0.0904, 1.0668, 0.0055, 1.1182, 2.0589, 1.1262},
+    {"RightLowerArm", 0, 0.0964, 0.9057, 0.0063, 0.5742, 2.2620, 0.7081},
+    {"RightHand", 0, 0.0955, 0.7333, -0.0278, 0.3766, 1.3502, 1.0669},
+    {"LeftUpperLeg", 0, -0.0750, 0.6494, 0.0075, 1.3721, 3.4634, 1.5569},
+    {"LeftLowerLeg", 0, -0.0547, 0.2866, 0.0297, 0.8074, 4.3856, 1.2320},
+    {"LeftFoot", 0, -0.0470, 0.0530, -0.0259, 0.8120, 1.0688, 2.0155},
+    {"RightUpperLeg", 0, 0.0751, 0.6494, 0.0074, 1.3718, 3.4639, 1.5570},
+    {"RightLowerLeg", 0, 0.0551, 0.2867, 0.0297, 0.8070, 4.3858, 1.2321},
+    {"RightFoot", 0, 0.0475, 0.0531, -0.0259, 0.8120, 1.0690, 2.0156},
+}
+local R6_MAP = {
+    Head = "Head", UpperTorso = "Torso", LowerTorso = "Torso",
+    LeftUpperArm = "Left Arm", LeftLowerArm = "Left Arm", LeftHand = "Left Arm",
+    RightUpperArm = "Right Arm", RightLowerArm = "Right Arm", RightHand = "Right Arm",
+    LeftUpperLeg = "Left Leg", LeftLowerLeg = "Left Leg", LeftFoot = "Left Leg",
+    RightUpperLeg = "Right Leg", RightLowerLeg = "Right Leg", RightFoot = "Right Leg",
+}
+
+local Toast = new("TextLabel", {
+    AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 46),
+    AutomaticSize = Enum.AutomaticSize.XY, Size = UDim2.new(0, 0, 0, 0), BackgroundColor3 = THEME.Background,
+    BorderSizePixel = 0, Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = THEME.TextPrimary,
+    TextWrapped = true, Text = "", Visible = false, ZIndex = 60,
+}, ScreenGui)
+corner(Toast, 8)
+stroke(Toast, THEME.BorderActive, 1)
+new("UIPadding", {
+    PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12),
+    PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8),
+}, Toast)
+new("UISizeConstraint", {MaxSize = Vector2.new(420, 200)}, Toast)
+
+local toastId = 0
+local function notify(text)
+    toastId = toastId + 1
+    local id = toastId
+    Toast.Text = text
+    Toast.Visible = true
+    task.delay(4, function()
+        if id == toastId then Toast.Visible = false end
+    end)
+end
+
+local animeOn = false
+local animeFolder, animeConn
+local hidden = {}
+
+local function animeAsset(file)
+    return (getcustomasset or getsynasset)(ANIME_DIR .. file)
+end
+
+local function pieceFile(p)
+    return p[1] .. (p[2] == 1 and "_a" or "_s") .. ".mesh"
+end
+
+local function animeFilesReady()
+    if not (isfile and (getcustomasset or getsynasset)) then return false end
+    if not isfile(ANIME_DIR .. "atlas.png") then return false end
+    for _, p in ipairs(ANIME) do
+        if not isfile(ANIME_DIR .. pieceFile(p)) then return false end
+    end
+    return true
+end
+
+local function hideOne(inst)
+    if animeFolder and inst:IsDescendantOf(animeFolder) then return end
+    if inst:FindFirstAncestorOfClass("Tool") then return end
+    if inst:IsA("BasePart") or inst:IsA("Decal") then
+        if hidden[inst] == nil then hidden[inst] = inst.Transparency end
+        inst.Transparency = 1
+    end
+end
+
+local function removeAnime()
+    if animeConn then
+        animeConn:Disconnect()
+        animeConn = nil
+    end
+    if animeFolder then
+        animeFolder:Destroy()
+        animeFolder = nil
+    end
+    for inst, value in pairs(hidden) do
+        pcall(function() inst.Transparency = value end)
+    end
+    hidden = {}
+end
+
+local function restTable(char, hrp)
+    local rel, motors = {[hrp] = CFrame.new()}, {}
+    for _, d in ipairs(char:GetDescendants()) do
+        if d:IsA("Motor6D") and d.Part0 and d.Part1 then table.insert(motors, d) end
+    end
+    local changed = true
+    while changed do
+        changed = false
+        for _, m in ipairs(motors) do
+            if rel[m.Part0] and not rel[m.Part1] then
+                rel[m.Part1] = rel[m.Part0] * m.C0 * m.C1:Inverse()
+                changed = true
+            end
+        end
+    end
+    return rel
+end
+
+local function newPiece(meshAsset, atlas, alpha, size, scale)
+    local piece
+    pcall(function()
+        local mp = Instance.new("MeshPart")
+        mp.MeshId = meshAsset
+        mp.Size = size
+        if mp.MeshId ~= "" then piece = mp end
+    end)
+    if piece then
+        pcall(function()
+            piece.RenderFidelity = Enum.RenderFidelity.Precise
+            new("SurfaceAppearance", {
+                ColorMap = atlas,
+                AlphaMode = alpha and Enum.AlphaMode.Transparency or Enum.AlphaMode.Opaque,
+            }, piece)
+        end)
+    else
+        piece = new("Part", {Size = Vector3.new(0.2, 0.2, 0.2)})
+        new("SpecialMesh", {
+            MeshType = Enum.MeshType.FileMesh, MeshId = meshAsset, TextureId = atlas,
+            Scale = Vector3.new(scale, scale, scale),
+        }, piece)
+    end
+    piece.Anchored = false
+    piece.CanCollide = false
+    piece.CanTouch = false
+    piece.CanQuery = false
+    piece.Massless = true
+    piece.Color = Color3.new(1, 1, 1)
+    piece.Material = Enum.Material.SmoothPlastic
+    return piece
+end
+
+local function applyAnime()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not (hum and hrp) then return false end
+    removeAnime()
+
+    local isR15 = hum.RigType == Enum.HumanoidRigType.R15
+    local rel = restTable(char, hrp)
+    local foot = char:FindFirstChild(isR15 and "LeftFoot" or "Left Leg")
+    local head = char:FindFirstChild("Head")
+    if not (foot and head and rel[foot] and rel[head]) then return false end
+
+    local footBottom = rel[foot].Position.Y - foot.Size.Y / 2
+    local headTop = rel[head].Position.Y + head.Size.Y / 2
+    local scale = (headTop - footBottom) / ANIME_REF_H
+    local atlas = animeAsset("atlas.png")
+
+    animeFolder = new("Folder", {Name = "ZynthAnime"}, char)
+    animeConn = char.DescendantAdded:Connect(hideOne)
+    for _, inst in ipairs(char:GetDescendants()) do hideOne(inst) end
+
+    for _, p in ipairs(ANIME) do
+        local part = char:FindFirstChild(isR15 and p[1] or R6_MAP[p[1]])
+        if part and rel[part] then
+            local localCF = CFrame.new(Vector3.new(0, footBottom, 0) + Vector3.new(p[3], p[4], p[5]) * scale)
+            local piece = newPiece(animeAsset(pieceFile(p)), atlas, p[2] == 1, Vector3.new(p[6], p[7], p[8]) * (scale / 10), scale / 10)
+            piece.Name = p[1]
+            piece.CFrame = hrp.CFrame * localCF
+            piece.Parent = animeFolder
+            new("Weld", {Part0 = part, Part1 = piece, C0 = rel[part]:Inverse() * localCF}, piece)
+        end
+    end
+    return true
+end
+
+local animeEntry
+local model = createCard(Col1, "Model", 3)
+animeEntry = addToggle(model, "Anime Model", "Replaces your avatar with a 3D model", false, nil, function(on)
+    if on then
+        if not animeFilesReady() then
+            notify("Anime Model: put the ZynthAnime folder into your executor's workspace folder")
+            animeEntry.Set(false)
+            return
+        end
+        animeOn = true
+        task.spawn(function()
+            if not applyAnime() then
+                animeOn = false
+                animeEntry.Set(false)
+                notify("Anime Model: character not ready, try again")
+            end
+        end)
+    else
+        animeOn = false
+        removeAnime()
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    if not animeOn then return end
+    char:WaitForChild("HumanoidRootPart", 10)
+    char:WaitForChild("Humanoid", 10)
+    task.wait(1)
+    if animeOn then applyAnime() end
+end)
 
 local WM_ORDER = {"Name", "Nickname", "FPS", "Ping", "Time", "Players"}
 local WM_LABELS = {

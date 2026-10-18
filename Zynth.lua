@@ -5,6 +5,7 @@ local SoundService = game:GetService("SoundService")
 local Debris = game:GetService("Debris")
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 local CONFIG = {
@@ -268,6 +269,7 @@ local THEME = {
     TextMuted = Color3.fromRGB(120, 110, 115),
     TextDim = Color3.fromRGB(72, 64, 68),
     BadgeBg = Color3.fromRGB(25, 18, 22),
+    Divider = Color3.fromRGB(60, 44, 50),
     ToggleOff = Color3.fromRGB(36, 28, 32),
     KnobOff = Color3.fromRGB(78, 68, 73),
     KnobOn = Color3.fromRGB(255, 255, 255),
@@ -368,7 +370,10 @@ local Inner = new("Frame", {
     Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 1,
 }, Main)
 
-local TopBar = new("Frame", {Name = "TopBar", Size = UDim2.new(1, 0, 0, 56), BackgroundTransparency = 1}, Inner)
+local TopBar = new("CanvasGroup", {
+    Name = "TopBar", Size = UDim2.new(1, 0, 0, 56), AnchorPoint = CENTER,
+    Position = UDim2.new(0.5, 0, 0, 28), BackgroundTransparency = 1, BorderSizePixel = 0,
+}, Inner)
 makeDraggable(TopBar, Holder)
 
 buildZ(TopBar, 34).Position = UDim2.new(0, 62, 0, 11)
@@ -400,9 +405,9 @@ local MenuBtn = new("ImageButton", {
 MenuBtn.MouseEnter:Connect(function() tw(MenuBtn, TWEEN_FAST, {ImageColor3 = THEME.TextPrimary}) end)
 MenuBtn.MouseLeave:Connect(function() tw(MenuBtn, TWEEN_FAST, {ImageColor3 = THEME.TextMuted}) end)
 
-local Sidebar = new("Frame", {
-    Name = "Sidebar", Size = UDim2.new(0, 155, 1, -58), Position = UDim2.new(0, 14, 0, 54),
-    BackgroundTransparency = 1,
+local Sidebar = new("CanvasGroup", {
+    Name = "Sidebar", Size = UDim2.new(0, 155, 1, -58), AnchorPoint = CENTER,
+    Position = UDim2.new(0, 91.5, 0, 270), BackgroundTransparency = 1, BorderSizePixel = 0,
 }, Inner)
 new("UIListLayout", {Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder}, Sidebar)
 
@@ -480,13 +485,18 @@ addSidebarItem("Presets", ICONS.Presets, false, 8)
 addSidebarItem("AutoBuy", ICONS.AutoBuy, false, 9)
 addSidebarItem("Accounts", ICONS.Accounts, false, 10)
 
+local ContentGroup = new("CanvasGroup", {
+    Name = "ContentGroup", Size = UDim2.new(1, -195, 1, -74), AnchorPoint = CENTER,
+    Position = UDim2.new(0, 478.5, 0, 268), BackgroundTransparency = 1, BorderSizePixel = 0,
+}, Inner)
+
 local Content = new("ScrollingFrame", {
-    Name = "Content", Position = UDim2.new(0, 181, 0, 60), Size = UDim2.new(1, -195, 1, -74),
+    Name = "Content", Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 1, 0),
     BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 2,
     ScrollBarImageColor3 = THEME.BorderActive, CanvasSize = UDim2.new(0, 0, 0, 0),
     AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y,
     ElasticBehavior = Enum.ElasticBehavior.Never,
-}, Inner)
+}, ContentGroup)
 
 local function makeColumn(name, pos)
     local col = new("Frame", {
@@ -528,6 +538,27 @@ local function createCard(parent, title, order)
     return card
 end
 
+local function makeSwitch(parent, position, state)
+    local switch = new("Frame", {
+        Size = UDim2.new(0, 28, 0, 16), AnchorPoint = Vector2.new(1, 0.5), Position = position,
+        BackgroundColor3 = state and THEME.Accent or THEME.ToggleOff, BorderSizePixel = 0,
+    }, parent)
+    corner(switch, 8)
+    local knob = new("Frame", {
+        Size = UDim2.new(0, 12, 0, 12),
+        Position = state and UDim2.new(1, -14, 0.5, -6) or UDim2.new(0, 2, 0.5, -6),
+        BackgroundColor3 = state and THEME.KnobOn or THEME.KnobOff, BorderSizePixel = 0,
+    }, switch)
+    corner(knob, 6)
+    return function(on)
+        tw(switch, TWEEN_FAST, {BackgroundColor3 = on and THEME.Accent or THEME.ToggleOff})
+        tw(knob, TWEEN_FAST, {
+            BackgroundColor3 = on and THEME.KnobOn or THEME.KnobOff,
+            Position = on and UDim2.new(1, -14, 0.5, -6) or UDim2.new(0, 2, 0.5, -6),
+        })
+    end
+end
+
 local function addToggle(card, name, desc, default, bind, callback)
     rowCount[card] = rowCount[card] + 1
 
@@ -550,17 +581,8 @@ local function addToggle(card, name, desc, default, bind, callback)
         }, row)
     end
 
-    local switch = new("Frame", {
-        Size = UDim2.new(0, 28, 0, 16), AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -12, 0.5, 0), BackgroundColor3 = THEME.ToggleOff, BorderSizePixel = 0,
-    }, row)
-    corner(switch, 8)
-
-    local knob = new("Frame", {
-        Size = UDim2.new(0, 12, 0, 12), Position = UDim2.new(0, 2, 0.5, -6),
-        BackgroundColor3 = THEME.KnobOff, BorderSizePixel = 0,
-    }, switch)
-    corner(knob, 6)
+    local on = default and true or false
+    local setSwitch = makeSwitch(row, UDim2.new(1, -12, 0.5, 0), on)
 
     if bind then
         local badge = new("Frame", {
@@ -577,31 +599,96 @@ local function addToggle(card, name, desc, default, bind, callback)
         }, badge)
     end
 
-    local on = default and true or false
-    if on then
-        switch.BackgroundColor3 = THEME.Accent
-        knob.BackgroundColor3 = THEME.KnobOn
-        knob.Position = UDim2.new(1, -14, 0.5, -6)
-    end
-
     row.MouseButton1Click:Connect(function()
         on = not on
         play(on and "ToggleOn" or "ToggleOff")
-        tw(switch, TWEEN_FAST, {BackgroundColor3 = on and THEME.Accent or THEME.ToggleOff})
-        tw(knob, TWEEN_FAST, {
-            BackgroundColor3 = on and THEME.KnobOn or THEME.KnobOff,
-            Position = on and UDim2.new(1, -14, 0.5, -6) or UDim2.new(0, 2, 0.5, -6),
-        })
+        setSwitch(on)
         if callback then callback(on) end
     end)
 
-    table.insert(rows, {Name = name:lower(), Frame = row, Card = card})
+    local entry = {Name = name:lower(), Frame = row, Card = card}
+    table.insert(rows, entry)
+    return entry
+end
+
+local function addSettings(card, entry, items)
+    rowCount[card] = rowCount[card] + 1
+    local height = #items * 26 + 4
+
+    local panel = new("Frame", {
+        Name = "Settings", Size = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1,
+        ClipsDescendants = true, LayoutOrder = rowCount[card],
+    }, card)
+    new("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder}, panel)
+    new("UIPadding", {PaddingTop = UDim.new(0, 2)}, panel)
+    entry.Panel = panel
+
+    for i, item in ipairs(items) do
+        local opt = new("TextButton", {
+            Size = UDim2.new(1, 0, 0, 26), BackgroundTransparency = 1, Text = "",
+            AutoButtonColor = false, LayoutOrder = i,
+        }, panel)
+        new("TextLabel", {
+            Position = UDim2.new(0, 24, 0, 0), Size = UDim2.new(1, -90, 1, 0), BackgroundTransparency = 1,
+            Text = item.label, Font = Enum.Font.GothamMedium, TextSize = 10,
+            TextColor3 = THEME.TextMuted, TextXAlignment = Enum.TextXAlignment.Left,
+        }, opt)
+        local state = item.default
+        local setOpt = makeSwitch(opt, UDim2.new(1, -12, 0.5, 0), state)
+        opt.MouseButton1Click:Connect(function()
+            state = not state
+            play(state and "ToggleOn" or "ToggleOff")
+            setOpt(state)
+            item.onChange(state)
+        end)
+    end
+
+    local gearBtn = new("TextButton", {
+        Size = UDim2.new(0, 26, 0, 26), AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -46, 0.5, 0), BackgroundTransparency = 1, Text = "",
+    }, entry.Frame)
+    local gear = new("Frame", {
+        Size = UDim2.new(0, 14, 0, 14), AnchorPoint = CENTER, Position = UDim2.new(0.5, 0, 0.5, 0),
+        BackgroundTransparency = 1,
+    }, gearBtn)
+    local parts = {}
+    for _, r in ipairs({0, 45, 90, 135}) do
+        table.insert(parts, new("Frame", {
+            Size = UDim2.new(0, 14, 0, 3), AnchorPoint = CENTER, Position = UDim2.new(0.5, 0, 0.5, 0),
+            Rotation = r, BackgroundColor3 = THEME.TextMuted, BorderSizePixel = 0,
+        }, gear))
+    end
+    local body = new("Frame", {
+        Size = UDim2.new(0, 10, 0, 10), AnchorPoint = CENTER, Position = UDim2.new(0.5, 0, 0.5, 0),
+        BackgroundColor3 = THEME.TextMuted, BorderSizePixel = 0,
+    }, gear)
+    corner(body, 5)
+    table.insert(parts, body)
+    corner(new("Frame", {
+        Size = UDim2.new(0, 4, 0, 4), AnchorPoint = CENTER, Position = UDim2.new(0.5, 0, 0.5, 0),
+        BackgroundColor3 = THEME.CardBg, BorderSizePixel = 0,
+    }, gear), 2)
+
+    local open = false
+    gearBtn.MouseButton1Click:Connect(function()
+        open = not open
+        play("Click")
+        tw(gear, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Rotation = open and 180 or 0})
+        for _, part in ipairs(parts) do
+            tw(part, TWEEN_FAST, {BackgroundColor3 = open and THEME.Accent or THEME.TextMuted})
+        end
+        tw(panel, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1, 0, 0, open and height or 0),
+        })
+    end)
 end
 
 SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
     local query = SearchInput.Text:lower()
     for _, item in ipairs(rows) do
-        item.Frame.Visible = query == "" or string.find(item.Name, query, 1, true) ~= nil
+        local match = query == "" or string.find(item.Name, query, 1, true) ~= nil
+        item.Frame.Visible = match
+        if item.Panel then item.Panel.Visible = match end
     end
     for _, card in ipairs(cards) do
         local any = false
@@ -634,6 +721,112 @@ addToggle(other, "No Slot Change", nil, false, nil)
 addToggle(other, "Anti Bot", nil, false, nil)
 addToggle(other, "No Friend Damage", nil, true, nil)
 
+local WM_ORDER = {"Name", "Nickname", "FPS", "Ping", "Time", "Players"}
+local WM_LABELS = {
+    Name = "Script name", Nickname = "Nickname", FPS = "FPS",
+    Ping = "Ping", Time = "Time", Players = "Players",
+}
+local WM = {Name = true, Nickname = true, FPS = true, Ping = true, Time = false, Players = false}
+local wmEnabled = true
+local fps, ping = 60, 0
+local MUTED = 'rgb(120,110,115)'
+
+local function getPing()
+    local ok, v = pcall(function()
+        return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+    end)
+    if ok and v then return floor(v + 0.5) end
+    local ok2, p = pcall(function() return LocalPlayer:GetNetworkPing() * 1000 end)
+    return ok2 and floor(p + 0.5) or 0
+end
+
+local WM_TEXT = {
+    Name = function() return '<font color="rgb(246,92,82)">Zynth</font>' end,
+    Nickname = function() return LocalPlayer.Name end,
+    FPS = function() return fps .. '<font color="' .. MUTED .. '"> fps</font>' end,
+    Ping = function() return ping .. '<font color="' .. MUTED .. '"> ms</font>' end,
+    Time = function() return os.date("%H:%M") end,
+    Players = function() return #Players:GetPlayers() .. "/" .. Players.MaxPlayers end,
+}
+
+local Watermark = new("Frame", {
+    Name = "Watermark", AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 0, 26),
+    AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 10),
+    BackgroundColor3 = THEME.Background, BackgroundTransparency = 0.08, BorderSizePixel = 0,
+    Visible = false, ZIndex = 5,
+}, ScreenGui)
+corner(Watermark, 7)
+stroke(Watermark, THEME.BorderActive, 1)
+new("UIListLayout", {
+    FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center,
+    Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder,
+}, Watermark)
+new("UIPadding", {PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10)}, Watermark)
+buildZ(Watermark, 12).LayoutOrder = 0
+makeDraggable(Watermark, Watermark)
+
+local wmLabels = {}
+
+local function rebuildWatermark()
+    for _, c in ipairs(Watermark:GetChildren()) do
+        if c:GetAttribute("seg") then c:Destroy() end
+    end
+    wmLabels = {}
+    local order = 0
+    for _, key in ipairs(WM_ORDER) do
+        if WM[key] then
+            order = order + 1
+            new("Frame", {
+                Size = UDim2.new(0, 1, 0, 12), BackgroundColor3 = THEME.Divider,
+                BorderSizePixel = 0, LayoutOrder = order * 2 - 1,
+            }, Watermark):SetAttribute("seg", true)
+            local label = new("TextLabel", {
+                AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 1, 0), BackgroundTransparency = 1,
+                RichText = true, Font = Enum.Font.GothamMedium, TextSize = 11, TextColor3 = THEME.TextPrimary,
+                Text = WM_TEXT[key](), LayoutOrder = order * 2,
+            }, Watermark)
+            label:SetAttribute("seg", true)
+            wmLabels[key] = label
+        end
+    end
+end
+rebuildWatermark()
+
+do
+    local frames, acc = 0, 0
+    local conn = RunService.Heartbeat:Connect(function(dt)
+        frames = frames + 1
+        acc = acc + dt
+        if acc >= 0.5 then
+            fps = floor(frames / acc + 0.5)
+            frames, acc = 0, 0
+            ping = getPing()
+            if Watermark.Visible then
+                for key, label in pairs(wmLabels) do label.Text = WM_TEXT[key]() end
+            end
+        end
+    end)
+    ScreenGui.Destroying:Connect(function() conn:Disconnect() end)
+end
+
+local interface = createCard(Col2, "Interface", 3)
+local wmEntry = addToggle(interface, "Watermark", nil, true, nil, function(on)
+    wmEnabled = on
+    Watermark.Visible = on
+end)
+
+local wmItems = {}
+for _, key in ipairs(WM_ORDER) do
+    table.insert(wmItems, {
+        label = WM_LABELS[key], default = WM[key],
+        onChange = function(on)
+            WM[key] = on
+            rebuildWatermark()
+        end,
+    })
+end
+addSettings(interface, wmEntry, wmItems)
+
 local FloatBtn = new("TextButton", {
     Name = "ZynthButton", Size = UDim2.new(0, 52, 0, 52), AnchorPoint = CENTER,
     Position = UDim2.new(0, 46, 0.4, 0), BackgroundColor3 = Color3.fromRGB(8, 8, 8),
@@ -653,15 +846,28 @@ end
 
 local menuOpen, busy = false, false
 
+local blocks = {TopBar, Sidebar, ContentGroup}
+local finals = {}
+for _, b in ipairs(blocks) do finals[b] = b.Position end
+local CENTER_POS = UDim2.new(0.5, 0, 0.5, 0)
+
 local function openMenu()
     if menuOpen or busy then return end
     busy, menuOpen = true, true
     play("Open")
+
+    for _, b in ipairs(blocks) do
+        b.Position = CENTER_POS
+        b.GroupTransparency = 1
+    end
     Main.Size = CLOSED_SIZE
     Holder.Visible = true
-    tw(Main, TweenInfo.new(0.55, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = OPEN_SIZE}).Completed:Connect(function()
-        busy = false
-    end)
+
+    local info = TweenInfo.new(0.55, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+    tw(Main, info, {Size = OPEN_SIZE}).Completed:Connect(function() busy = false end)
+    for _, b in ipairs(blocks) do
+        tw(b, info, {Position = finals[b], GroupTransparency = 0})
+    end
     task.delay(0.8, function() busy = false end)
 end
 
@@ -669,7 +875,12 @@ local function closeMenu()
     if not menuOpen or busy then return end
     busy, menuOpen = true, false
     play("Close")
-    tw(Main, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = CLOSED_SIZE}).Completed:Connect(function()
+
+    local info = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    for _, b in ipairs(blocks) do
+        tw(b, info, {Position = CENTER_POS, GroupTransparency = 1})
+    end
+    tw(Main, info, {Size = CLOSED_SIZE}).Completed:Connect(function()
         if not menuOpen then Holder.Visible = false end
         busy = false
     end)
@@ -759,6 +970,7 @@ end
 
 task.spawn(function()
     runIntro()
+    Watermark.Visible = wmEnabled
     FloatBtn.Visible = true
     tw(FloatScale, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Scale = 1})
     openMenu()

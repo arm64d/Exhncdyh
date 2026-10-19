@@ -8,6 +8,22 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
+local BUILD = "v8-log"
+
+local function log(...)
+    local parts = {}
+    for i = 1, select("#", ...) do parts[i] = tostring((select(i, ...))) end
+    local line = "[Zynth] " .. table.concat(parts, " ")
+    print(line)
+    pcall(function()
+        if rconsoleprint then rconsoleprint(line .. "\n") end
+    end)
+end
+
+log("build", BUILD, "starting")
+pcall(function() log("executor:", identifyexecutor()) end)
+log("env | writefile", writefile ~= nil, "| isfile", isfile ~= nil, "| getcustomasset", (getcustomasset or getsynasset) ~= nil, "| gethui", gethui ~= nil)
+
 local CONFIG = {
     IntroText = "ynth",
     IntroFont = Enum.Font.Michroma,
@@ -207,13 +223,16 @@ local function prepareSounds()
     local getAsset = getcustomasset or getsynasset
     if writefile and getAsset then
         for _, name in ipairs({"Intro", "Slide", "Open", "Close", "Click", "ToggleOn", "ToggleOff", "Tab"}) do
-            pcall(function()
+            local ok, err = pcall(function()
                 local path = "zynth_" .. name .. ".wav"
                 writefile(path, wav(SOUND_DEFS[name]()))
                 soundIds[name] = getAsset(path)
             end)
+            log("sound", name, ok and "ok" or ("FAILED: " .. tostring(err)), soundIds[name] or "")
             task.wait()
         end
+    else
+        log("sound: skipped, executor has no writefile/getcustomasset")
     end
     for name, id in pairs(CONFIG.CustomSounds) do soundIds[name] = id end
 end
@@ -447,12 +466,16 @@ new("UIListLayout", {Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.Layout
 
 local function applyGirl(data)
     local getAsset = getcustomasset or getsynasset
-    if not (writefile and getAsset) then return end
-    pcall(function()
+    if not (writefile and getAsset) then
+        log("girl image: skipped, executor has no writefile/getcustomasset")
+        return
+    end
+    local ok, err = pcall(function()
         writefile("zynth_girl.png", b64decode(data))
         GirlImage.Image = getAsset("zynth_girl.png")
         GirlImage.Visible = true
     end)
+    log("girl image", ok and "ok" or ("FAILED: " .. tostring(err)))
 end
 
 local activeTab
@@ -813,6 +836,7 @@ new("UISizeConstraint", {MaxSize = Vector2.new(420, 200)}, Toast)
 
 local toastId = 0
 local function notify(text)
+    log("toast:", text)
     toastId = toastId + 1
     local id = toastId
     Toast.Text = text
@@ -835,11 +859,31 @@ local function pieceFile(p)
 end
 
 local function animeFilesReady()
-    if not (isfile and (getcustomasset or getsynasset)) then return false end
-    if not isfile(ANIME_DIR .. "atlas.png") then return false end
-    for _, p in ipairs(ANIME) do
-        if not isfile(ANIME_DIR .. pieceFile(p)) then return false end
+    local getAsset = getcustomasset or getsynasset
+    log("anime: checking files in", ANIME_DIR)
+    if not (isfile and getAsset) then
+        log("anime: executor has no isfile/getcustomasset")
+        return false, "executor has no isfile/getcustomasset"
     end
+    local missing = {}
+    if not isfile(ANIME_DIR .. "atlas.png") then table.insert(missing, "atlas.png") end
+    for _, p in ipairs(ANIME) do
+        local f = pieceFile(p)
+        if not isfile(ANIME_DIR .. f) then table.insert(missing, f) end
+    end
+    if #missing > 0 then
+        log("anime: MISSING", #missing, "file(s):", table.concat(missing, ", "))
+        pcall(function()
+            local list = {}
+            for i, path in ipairs(listfiles("")) do
+                if i > 40 then break end
+                table.insert(list, path)
+            end
+            log("anime: workspace root contains:", table.concat(list, ", "))
+        end)
+        return false, "missing " .. #missing .. " file(s), see Delta console"
+    end
+    log("anime: all", #ANIME + 1, "files found")
     return true
 end
 
@@ -861,10 +905,13 @@ local function removeAnime()
         animeFolder:Destroy()
         animeFolder = nil
     end
+    local count = 0
     for inst, value in pairs(hidden) do
+        count = count + 1
         pcall(function() inst.Transparency = value end)
     end
     hidden = {}
+    log("anime: removed, restored", count, "parts")
 end
 
 local function restTable(char, hrp)
@@ -872,6 +919,7 @@ local function restTable(char, hrp)
     for _, d in ipairs(char:GetDescendants()) do
         if d:IsA("Motor6D") and d.Part0 and d.Part1 then table.insert(motors, d) end
     end
+    log("anime: motors found", #motors)
     local changed = true
     while changed do
         changed = false
@@ -887,20 +935,26 @@ end
 
 local function newPiece(meshAsset, atlas, alpha, size, scale)
     local piece
-    pcall(function()
+    local ok, err = pcall(function()
         local mp = Instance.new("MeshPart")
         mp.MeshId = meshAsset
         mp.Size = size
         if mp.MeshId ~= "" then piece = mp end
     end)
+    if not ok then
+        log("anime: MeshPart creation failed:", err)
+    elseif not piece then
+        log("anime: MeshPart accepted no MeshId, using SpecialMesh fallback")
+    end
     if piece then
-        pcall(function()
+        local ok2, err2 = pcall(function()
             piece.RenderFidelity = Enum.RenderFidelity.Precise
             new("SurfaceAppearance", {
                 ColorMap = atlas,
                 AlphaMode = alpha and Enum.AlphaMode.Transparency or Enum.AlphaMode.Opaque,
             }, piece)
         end)
+        if not ok2 then log("anime: SurfaceAppearance failed:", err2) end
     else
         piece = new("Part", {Size = Vector3.new(0.2, 0.2, 0.2)})
         new("SpecialMesh", {
@@ -920,56 +974,89 @@ end
 
 local function applyAnime()
     local char = LocalPlayer.Character
+    log("anime: apply | character =", char and char.Name or "nil")
     if not char then return false, "no character" end
+
+    local names = {}
+    for _, c in ipairs(char:GetChildren()) do table.insert(names, c.ClassName .. ":" .. c.Name) end
+    log("anime: character children:", table.concat(names, ", "))
+
     local hrp = char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart", 5)
     if not hrp then return false, "no HumanoidRootPart" end
 
     local isR15 = char:FindFirstChild("UpperTorso") ~= nil
     local foot = char:FindFirstChild(isR15 and "LeftFoot" or "Left Leg")
     local head = char:FindFirstChild("Head")
+    log("anime: rig", isR15 and "R15" or "R6", "| foot", foot and foot.Name or "nil", "| head", head and head.Name or "nil")
     if not (foot and head) then return false, "body parts not found" end
     removeAnime()
 
     local rel = restTable(char, hrp)
+    local noChain = {}
     for _, d in ipairs(char:GetChildren()) do
-        if d:IsA("BasePart") and not rel[d] then rel[d] = hrp.CFrame:ToObjectSpace(d.CFrame) end
+        if d:IsA("BasePart") and not rel[d] then
+            rel[d] = hrp.CFrame:ToObjectSpace(d.CFrame)
+            table.insert(noChain, d.Name)
+        end
     end
+    if #noChain > 0 then log("anime: parts without joint chain (current pose used):", table.concat(noChain, ", ")) end
 
     local footBottom = rel[foot].Position.Y - foot.Size.Y / 2
     local headTop = rel[head].Position.Y + head.Size.Y / 2
     local scale = (headTop - footBottom) / ANIME_REF_H
+    log(string.format("anime: footBottom %.3f | headTop %.3f | scale %.3f", footBottom, headTop, scale))
+
     local atlas = animeAsset("atlas.png")
+    log("anime: atlas asset", atlas)
 
     animeFolder = new("Folder", {Name = "ZynthAnime"}, char)
     animeConn = char.DescendantAdded:Connect(hideOne)
     for _, inst in ipairs(char:GetDescendants()) do hideOne(inst) end
+    local hiddenCount = 0
+    for _ in pairs(hidden) do hiddenCount = hiddenCount + 1 end
+    log("anime: hidden original parts/decals", hiddenCount)
 
+    local created, skipped = 0, 0
     for _, p in ipairs(ANIME) do
-        local part = char:FindFirstChild(isR15 and p[1] or R6_MAP[p[1]])
+        local partName = isR15 and p[1] or R6_MAP[p[1]]
+        local part = char:FindFirstChild(partName)
         if part and rel[part] then
             local localCF = CFrame.new(Vector3.new(0, footBottom, 0) + Vector3.new(p[3], p[4], p[5]) * scale)
-            local piece = newPiece(animeAsset(pieceFile(p)), atlas, p[2] == 1, Vector3.new(p[6], p[7], p[8]) * (scale / 10), scale / 10)
+            local meshAsset = animeAsset(pieceFile(p))
+            local piece = newPiece(meshAsset, atlas, p[2] == 1, Vector3.new(p[6], p[7], p[8]) * (scale / 10), scale / 10)
             piece.Name = p[1]
             piece.CFrame = hrp.CFrame * localCF
             piece.Parent = animeFolder
             new("Weld", {Part0 = part, Part1 = piece, C0 = rel[part]:Inverse() * localCF}, piece)
+            created = created + 1
+            log("anime: piece", pieceFile(p), "->", part.Name, "|", piece.ClassName, "| size", tostring(piece.Size))
+        else
+            skipped = skipped + 1
+            log("anime: SKIPPED", p[1], "| target part", partName, "| exists", part ~= nil)
         end
     end
+    log("anime: done | pieces", created, "| skipped", skipped)
     return true
 end
 
 local animeEntry
 local model = createCard(Col1, "Model", 3)
 animeEntry = addToggle(model, "Anime Model", "Replaces your avatar with a 3D model", false, nil, function(on)
+    log("anime: toggle", on and "ON" or "OFF")
     if on then
-        if not animeFilesReady() then
-            notify("Anime Model: put the ZynthAnime folder into your executor's workspace folder")
+        local ready, why = animeFilesReady()
+        if not ready then
+            notify("Anime Model: " .. tostring(why))
             animeEntry.Set(false)
             return
         end
         animeOn = true
         task.spawn(function()
-            local ran, ok, reason = pcall(applyAnime)
+            local ran, ok, reason = xpcall(applyAnime, function(e)
+                log("anime: ERROR", e)
+                log(debug.traceback())
+                return e
+            end)
             if not (ran and ok) then
                 animeOn = false
                 animeEntry.Set(false)
@@ -984,11 +1071,18 @@ animeEntry = addToggle(model, "Anime Model", "Replaces your avatar with a 3D mod
 end)
 
 LocalPlayer.CharacterAdded:Connect(function(char)
+    log("character added:", char.Name, "| anime on:", animeOn)
     if not animeOn then return end
     char:WaitForChild("HumanoidRootPart", 10)
     char:WaitForChild("Humanoid", 10)
     task.wait(1)
-    if animeOn then applyAnime() end
+    if animeOn then
+        local ran, ok, reason = xpcall(applyAnime, function(e)
+            log("anime: ERROR on respawn", e)
+            return e
+        end)
+        if not (ran and ok) then log("anime: respawn apply failed:", ran and reason or ok) end
+    end
 end)
 
 local WM_ORDER = {"Name", "Nickname", "FPS", "Ping", "Time", "Players"}
@@ -1174,7 +1268,8 @@ local function runIntro()
         BackgroundTransparency = 0, BorderSizePixel = 0, Active = true, ZIndex = 50,
     }, ScreenGui)
 
-    pcall(function()
+    log("intro: start")
+    local introOk, introErr = pcall(function()
         prepareSounds()
 
         local cam = workspace.CurrentCamera
@@ -1234,6 +1329,7 @@ local function runIntro()
         tw(logo, fade, {GroupTransparency = 1})
         task.wait(0.6)
     end)
+    log("intro:", introOk and "finished" or ("ERROR: " .. tostring(introErr)))
 
     Intro:Destroy()
 end
@@ -1244,6 +1340,7 @@ task.spawn(function()
     FloatBtn.Visible = true
     tw(FloatScale, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Scale = 1})
     openMenu()
+    notify("Zynth build " .. BUILD .. " loaded")
 end)
 
 applyGirl([=[

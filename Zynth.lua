@@ -8,7 +8,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
-local BUILD = "v8-log"
+local BUILD = "v9-skeleton"
 
 local function log(...)
     local parts = {}
@@ -812,6 +812,35 @@ local ANIME = {
     {"RightLowerLeg", 0, 0.0551, 0.2867, 0.0297, 0.8070, 4.3858, 1.2321},
     {"RightFoot", 0, 0.0475, 0.0531, -0.0259, 0.8120, 1.0690, 2.0156},
 }
+local ANIME_ORDER = {
+    "LowerTorso", "UpperTorso", "Head",
+    "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand",
+    "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot",
+}
+local ANIME_PARENT = {
+    UpperTorso = "LowerTorso", Head = "UpperTorso",
+    LeftUpperArm = "UpperTorso", LeftLowerArm = "LeftUpperArm", LeftHand = "LeftLowerArm",
+    RightUpperArm = "UpperTorso", RightLowerArm = "RightUpperArm", RightHand = "RightLowerArm",
+    LeftUpperLeg = "LowerTorso", LeftLowerLeg = "LeftUpperLeg", LeftFoot = "LeftLowerLeg",
+    RightUpperLeg = "LowerTorso", RightLowerLeg = "RightUpperLeg", RightFoot = "RightLowerLeg",
+}
+local ANIME_PIVOT = {
+    LowerTorso = Vector3.new(0.0003, 0.8383, -0.0063),
+    UpperTorso = Vector3.new(0.0003, 0.9978, -0.0283),
+    Head = Vector3.new(0.0003, 1.2872, 0.0071),
+    LeftUpperArm = Vector3.new(-0.0992, 1.1820, 0.0052),
+    LeftLowerArm = Vector3.new(-0.0949, 0.9856, 0.0036),
+    LeftHand = Vector3.new(-0.0992, 0.7955, -0.0121),
+    RightUpperArm = Vector3.new(0.0998, 1.1820, 0.0052),
+    RightLowerArm = Vector3.new(0.0955, 0.9856, 0.0036),
+    RightHand = Vector3.new(0.0998, 0.7955, -0.0121),
+    LeftUpperLeg = Vector3.new(-0.0719, 0.8012, -0.0015),
+    LeftLowerLeg = Vector3.new(-0.0530, 0.4729, 0.0043),
+    LeftFoot = Vector3.new(-0.0434, 0.0949, 0.0241),
+    RightUpperLeg = Vector3.new(0.0724, 0.8012, -0.0015),
+    RightLowerLeg = Vector3.new(0.0535, 0.4729, 0.0043),
+    RightFoot = Vector3.new(0.0440, 0.0949, 0.0241),
+}
 local R6_MAP = {
     Head = "Head", UpperTorso = "Torso", LowerTorso = "Torso",
     LeftUpperArm = "Left Arm", LeftLowerArm = "Left Arm", LeftHand = "Left Arm",
@@ -847,7 +876,7 @@ local function notify(text)
 end
 
 local animeOn = false
-local animeFolder, animeConn
+local animeFolder, animeConn, animeState
 local hidden = {}
 
 local function animeAsset(file)
@@ -897,6 +926,8 @@ local function hideOne(inst)
 end
 
 local function removeAnime()
+    pcall(function() RunService:UnbindFromRenderStep("ZynthAnime") end)
+    animeState = nil
     if animeConn then
         animeConn:Disconnect()
         animeConn = nil
@@ -914,23 +945,25 @@ local function removeAnime()
     log("anime: removed, restored", count, "parts")
 end
 
-local function restTable(char, hrp)
-    local rel, motors = {[hrp] = CFrame.new()}, {}
-    for _, d in ipairs(char:GetDescendants()) do
-        if d:IsA("Motor6D") and d.Part0 and d.Part1 then table.insert(motors, d) end
-    end
-    log("anime: motors found", #motors)
-    local changed = true
-    while changed do
-        changed = false
-        for _, m in ipairs(motors) do
-            if rel[m.Part0] and not rel[m.Part1] then
-                rel[m.Part1] = rel[m.Part0] * m.C0 * m.C1:Inverse()
-                changed = true
+local function fitMesh(piece, expected, scale)
+    task.spawn(function()
+        local started = os.clock()
+        local natural
+        while os.clock() - started < 6 and piece.Parent do
+            local ok, v = pcall(function() return piece.MeshSize end)
+            if ok and v and v.Magnitude > 0 then
+                natural = v
+                break
             end
+            task.wait(0.1)
         end
-    end
-    return rel
+        if natural then
+            piece.Size = natural * (scale / 10)
+            log("anime: fit", piece.Name, "| mesh size", tostring(natural), "| expected", tostring(expected))
+        else
+            log("anime: MeshSize not available for", piece.Name, "(using computed size)")
+        end
+    end)
 end
 
 local function newPiece(meshAsset, atlas, alpha, size, scale)
@@ -962,7 +995,7 @@ local function newPiece(meshAsset, atlas, alpha, size, scale)
             Scale = Vector3.new(scale, scale, scale),
         }, piece)
     end
-    piece.Anchored = false
+    piece.Anchored = true
     piece.CanCollide = false
     piece.CanTouch = false
     piece.CanQuery = false
@@ -972,14 +1005,39 @@ local function newPiece(meshAsset, atlas, alpha, size, scale)
     return piece
 end
 
+local function animeStep()
+    local st = animeState
+    if not st or not st.hrp.Parent then return end
+    local hrpCF = st.hrp.CFrame
+    local inv = hrpCF:Inverse()
+    local W, R = {}, {}
+    for _, g in ipairs(ANIME_ORDER) do
+        local part = st.parts[g]
+        local rot, relPos = CFrame.new(), nil
+        if part then
+            local rel = inv * part.CFrame
+            rot = rel - rel.Position
+            relPos = rel.Position
+        end
+        if g == "LowerTorso" then
+            W[g] = st.origin + st.scale * ANIME_PIVOT[g] + (relPos and (relPos - st.restRoot) or Vector3.zero)
+        else
+            local par = ANIME_PARENT[g]
+            W[g] = W[par] + R[par] * (st.scale * (ANIME_PIVOT[g] - ANIME_PIVOT[par]))
+        end
+        R[g] = rot
+    end
+    for _, item in ipairs(st.pieces) do
+        local g = item.group
+        local pos = W[g] + R[g] * (st.scale * (item.center - ANIME_PIVOT[g]))
+        item.piece.CFrame = hrpCF * (CFrame.new(pos) * R[g])
+    end
+end
+
 local function applyAnime()
     local char = LocalPlayer.Character
     log("anime: apply | character =", char and char.Name or "nil")
     if not char then return false, "no character" end
-
-    local names = {}
-    for _, c in ipairs(char:GetChildren()) do table.insert(names, c.ClassName .. ":" .. c.Name) end
-    log("anime: character children:", table.concat(names, ", "))
 
     local hrp = char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart", 5)
     if not hrp then return false, "no HumanoidRootPart" end
@@ -991,24 +1049,20 @@ local function applyAnime()
     if not (foot and head) then return false, "body parts not found" end
     removeAnime()
 
-    local rel = restTable(char, hrp)
-    local noChain = {}
-    for _, d in ipairs(char:GetChildren()) do
-        if d:IsA("BasePart") and not rel[d] then
-            rel[d] = hrp.CFrame:ToObjectSpace(d.CFrame)
-            table.insert(noChain, d.Name)
-        end
-    end
-    if #noChain > 0 then log("anime: parts without joint chain (current pose used):", table.concat(noChain, ", ")) end
-
-    local footBottom = rel[foot].Position.Y - foot.Size.Y / 2
-    local headTop = rel[head].Position.Y + head.Size.Y / 2
+    local function relOf(part) return hrp.CFrame:ToObjectSpace(part.CFrame) end
+    local footBottom = relOf(foot).Position.Y - foot.Size.Y / 2
+    local headTop = relOf(head).Position.Y + head.Size.Y / 2
     local scale = (headTop - footBottom) / ANIME_REF_H
     log(string.format("anime: footBottom %.3f | headTop %.3f | scale %.3f", footBottom, headTop, scale))
 
-    local atlas = animeAsset("atlas.png")
-    log("anime: atlas asset", atlas)
+    local parts = {}
+    for _, g in ipairs(ANIME_ORDER) do
+        parts[g] = char:FindFirstChild(isR15 and g or R6_MAP[g])
+        if not parts[g] then log("anime: no body part for group", g) end
+    end
+    if not parts.LowerTorso then return false, "torso not found" end
 
+    local atlas = animeAsset("atlas.png")
     animeFolder = new("Folder", {Name = "ZynthAnime"}, char)
     animeConn = char.DescendantAdded:Connect(hideOne)
     for _, inst in ipairs(char:GetDescendants()) do hideOne(inst) end
@@ -1016,26 +1070,24 @@ local function applyAnime()
     for _ in pairs(hidden) do hiddenCount = hiddenCount + 1 end
     log("anime: hidden original parts/decals", hiddenCount)
 
-    local created, skipped = 0, 0
+    local pieces = {}
     for _, p in ipairs(ANIME) do
-        local partName = isR15 and p[1] or R6_MAP[p[1]]
-        local part = char:FindFirstChild(partName)
-        if part and rel[part] then
-            local localCF = CFrame.new(Vector3.new(0, footBottom, 0) + Vector3.new(p[3], p[4], p[5]) * scale)
-            local meshAsset = animeAsset(pieceFile(p))
-            local piece = newPiece(meshAsset, atlas, p[2] == 1, Vector3.new(p[6], p[7], p[8]) * (scale / 10), scale / 10)
-            piece.Name = p[1]
-            piece.CFrame = hrp.CFrame * localCF
-            piece.Parent = animeFolder
-            new("Weld", {Part0 = part, Part1 = piece, C0 = rel[part]:Inverse() * localCF}, piece)
-            created = created + 1
-            log("anime: piece", pieceFile(p), "->", part.Name, "|", piece.ClassName, "| size", tostring(piece.Size))
-        else
-            skipped = skipped + 1
-            log("anime: SKIPPED", p[1], "| target part", partName, "| exists", part ~= nil)
-        end
+        local expected = Vector3.new(p[6], p[7], p[8])
+        local piece = newPiece(animeAsset(pieceFile(p)), atlas, p[2] == 1, expected * (scale / 10), scale / 10)
+        piece.Name = p[1] .. (p[2] == 1 and "_a" or "_s")
+        piece.Parent = animeFolder
+        fitMesh(piece, expected, scale)
+        table.insert(pieces, {piece = piece, group = p[1], center = Vector3.new(p[3], p[4], p[5])})
+        log("anime: piece", piece.Name, "|", piece.ClassName, "| group", p[1])
     end
-    log("anime: done | pieces", created, "| skipped", skipped)
+
+    animeState = {
+        hrp = hrp, parts = parts, pieces = pieces, scale = scale,
+        origin = Vector3.new(0, footBottom, 0), restRoot = relOf(parts.LowerTorso).Position,
+    }
+    animeStep()
+    RunService:BindToRenderStep("ZynthAnime", Enum.RenderPriority.Last.Value, animeStep)
+    log("anime: done | pieces", #pieces)
     return true
 end
 

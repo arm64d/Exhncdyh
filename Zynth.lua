@@ -8,7 +8,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
-local BUILD = "v9-skeleton"
+local BUILD = "v10-own-anim"
 
 local function log(...)
     local parts = {}
@@ -30,6 +30,7 @@ local CONFIG = {
     IntroTextSize = 30,
     ToggleKey = Enum.KeyCode.RightShift,
     GirlTransparency = 0.8,
+    AnimeScale = 1,
     CustomSounds = {},
 }
 
@@ -841,13 +842,6 @@ local ANIME_PIVOT = {
     RightLowerLeg = Vector3.new(0.0535, 0.4729, 0.0043),
     RightFoot = Vector3.new(0.0440, 0.0949, 0.0241),
 }
-local R6_MAP = {
-    Head = "Head", UpperTorso = "Torso", LowerTorso = "Torso",
-    LeftUpperArm = "Left Arm", LeftLowerArm = "Left Arm", LeftHand = "Left Arm",
-    RightUpperArm = "Right Arm", RightLowerArm = "Right Arm", RightHand = "Right Arm",
-    LeftUpperLeg = "Left Leg", LeftLowerLeg = "Left Leg", LeftFoot = "Left Leg",
-    RightUpperLeg = "Right Leg", RightLowerLeg = "Right Leg", RightFoot = "Right Leg",
-}
 
 local Toast = new("TextLabel", {
     AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 46),
@@ -945,91 +939,127 @@ local function removeAnime()
     log("anime: removed, restored", count, "parts")
 end
 
-local function fitMesh(piece, expected, scale)
-    task.spawn(function()
-        local started = os.clock()
-        local natural
-        while os.clock() - started < 6 and piece.Parent do
-            local ok, v = pcall(function() return piece.MeshSize end)
-            if ok and v and v.Magnitude > 0 then
-                natural = v
-                break
-            end
-            task.wait(0.1)
-        end
-        if natural then
-            piece.Size = natural * (scale / 10)
-            log("anime: fit", piece.Name, "| mesh size", tostring(natural), "| expected", tostring(expected))
-        else
-            log("anime: MeshSize not available for", piece.Name, "(using computed size)")
-        end
-    end)
-end
-
-local function newPiece(meshAsset, atlas, alpha, size, scale)
-    local piece
-    local ok, err = pcall(function()
-        local mp = Instance.new("MeshPart")
-        mp.MeshId = meshAsset
-        mp.Size = size
-        if mp.MeshId ~= "" then piece = mp end
-    end)
-    if not ok then
-        log("anime: MeshPart creation failed:", err)
-    elseif not piece then
-        log("anime: MeshPart accepted no MeshId, using SpecialMesh fallback")
-    end
-    if piece then
-        local ok2, err2 = pcall(function()
-            piece.RenderFidelity = Enum.RenderFidelity.Precise
-            new("SurfaceAppearance", {
-                ColorMap = atlas,
-                AlphaMode = alpha and Enum.AlphaMode.Transparency or Enum.AlphaMode.Opaque,
-            }, piece)
-        end)
-        if not ok2 then log("anime: SurfaceAppearance failed:", err2) end
-    else
-        piece = new("Part", {Size = Vector3.new(0.2, 0.2, 0.2)})
-        new("SpecialMesh", {
-            MeshType = Enum.MeshType.FileMesh, MeshId = meshAsset, TextureId = atlas,
-            Scale = Vector3.new(scale, scale, scale),
-        }, piece)
-    end
-    piece.Anchored = true
-    piece.CanCollide = false
-    piece.CanTouch = false
-    piece.CanQuery = false
-    piece.Massless = true
-    piece.Color = Color3.new(1, 1, 1)
-    piece.Material = Enum.Material.SmoothPlastic
+local function newPiece(meshAsset, atlas, scale)
+    local piece = new("Part", {
+        Size = Vector3.new(0.2, 0.2, 0.2), Anchored = true, CanCollide = false, CanTouch = false,
+        CanQuery = false, Massless = true, Color = Color3.new(1, 1, 1), Material = Enum.Material.SmoothPlastic,
+    })
+    new("SpecialMesh", {
+        MeshType = Enum.MeshType.FileMesh, MeshId = meshAsset, TextureId = atlas,
+        Scale = Vector3.new(scale, scale, scale),
+    }, piece)
     return piece
 end
 
-local function animeStep()
+local function probeMeshPart(hrp)
+    task.spawn(function()
+        local ok, mp = pcall(function()
+            local p = Instance.new("MeshPart")
+            p.MeshId = animeAsset("Head_s.mesh")
+            p.Size = Vector3.new(1, 1, 1)
+            p.Transparency = 1
+            p.Anchored = true
+            p.CanCollide = false
+            p.CFrame = hrp.CFrame * CFrame.new(0, 60, 0)
+            p.Parent = animeFolder
+            return p
+        end)
+        if not ok then
+            log("anime: probe failed:", mp)
+            return
+        end
+        task.wait(3)
+        local okSize, natural = pcall(function() return mp.MeshSize end)
+        log("anime: probe MeshPart | Size after load", tostring(mp.Size), "| MeshSize", okSize and tostring(natural) or "unavailable")
+        mp:Destroy()
+    end)
+end
+
+local function animeStep(dt)
     local st = animeState
     if not st or not st.hrp.Parent then return end
-    local hrpCF = st.hrp.CFrame
-    local inv = hrpCF:Inverse()
+
+    local hum = st.hum
+    local vel = st.hrp.AssemblyLinearVelocity
+    local speed = Vector3.new(vel.X, 0, vel.Z).Magnitude
+    local sitting = hum and hum.Sit or false
+    local air = (not sitting) and hum and hum.FloorMaterial == Enum.Material.Air or false
+    local moving = (not air) and (not sitting) and speed > 0.6
+
+    st.t = st.t + dt
+    local targetAmp = moving and math.clamp(speed / 16, 0.3, 1.4) or 0
+    st.amp = st.amp + (targetAmp - st.amp) * math.min(1, dt * 10)
+    st.phase = st.phase + dt * speed * 0.65
+
+    local ph, a = st.phase, st.amp
+    local sw = math.sin(ph) * a
+    local breathe = math.sin(st.t * 1.8)
+
+    local aL, aR = 0.75 * sw, -0.75 * sw
+    local kL = 0.95 * math.max(0, math.cos(ph)) * a
+    local kR = 0.95 * math.max(0, -math.cos(ph)) * a
+    local bL, bR = -0.65 * sw, 0.65 * sw
+    local eL = 0.1 + 0.55 * a * math.max(0, bL / 0.65 + 0.3)
+    local eR = 0.1 + 0.55 * a * math.max(0, bR / 0.65 + 0.3)
+    local zL, zR = -0.06 - 0.03 * breathe, 0.06 + 0.03 * breathe
+    local lean, hipYaw = -0.12 * a, 0.1 * math.sin(ph) * a
+    local utPitch, utYaw = 0.012 * breathe, -0.2 * math.sin(ph) * a
+    local headYaw = 0.12 * math.sin(ph) * a
+
+    if sitting then
+        aL, aR, kL, kR = 1.45, 1.45, 1.45, 1.45
+        bL, bR, eL, eR = 0.5, 0.5, 1.0, 1.0
+        lean, hipYaw, utYaw, headYaw = 0, 0, 0, 0
+    elseif air then
+        aL, aR, kL, kR = 0.5, -0.35, 0.7, 0.9
+        bL, bR, eL, eR = 0.2, 0.2, 0.3, 0.3
+        zL, zR = -0.8, 0.8
+        lean, hipYaw, utYaw, headYaw = 0, 0, 0, 0
+    end
+
+    local target = {
+        lean = lean, hipYaw = hipYaw, utPitch = utPitch, utYaw = utYaw, headYaw = headYaw,
+        aL = aL, aR = aR, kL = kL, kR = kR,
+        fL = sitting and 0 or -(aL - kL) * 0.75, fR = sitting and 0 or -(aR - kR) * 0.75,
+        bL = bL, bR = bR, zL = zL, zR = zR, eL = eL, eR = eR,
+    }
+    local blend = math.min(1, dt * 16)
+    local c = st.cur
+    for k, v in pairs(target) do c[k] = c[k] + (v - c[k]) * blend end
+
+    local localRot = {
+        LowerTorso = CFrame.Angles(c.lean, c.hipYaw, 0),
+        UpperTorso = CFrame.Angles(c.utPitch, c.utYaw, 0),
+        Head = CFrame.Angles(0, c.headYaw, 0),
+        LeftUpperArm = CFrame.Angles(c.bL, 0, c.zL), LeftLowerArm = CFrame.Angles(c.eL, 0, 0), LeftHand = CFrame.new(),
+        RightUpperArm = CFrame.Angles(c.bR, 0, c.zR), RightLowerArm = CFrame.Angles(c.eR, 0, 0), RightHand = CFrame.new(),
+        LeftUpperLeg = CFrame.Angles(c.aL, 0, 0), LeftLowerLeg = CFrame.Angles(-c.kL, 0, 0), LeftFoot = CFrame.Angles(c.fL, 0, 0),
+        RightUpperLeg = CFrame.Angles(c.aR, 0, 0), RightLowerLeg = CFrame.Angles(-c.kR, 0, 0), RightFoot = CFrame.Angles(c.fR, 0, 0),
+    }
+
     local W, R = {}, {}
     for _, g in ipairs(ANIME_ORDER) do
-        local part = st.parts[g]
-        local rot, relPos = CFrame.new(), nil
-        if part then
-            local rel = inv * part.CFrame
-            rot = rel - rel.Position
-            relPos = rel.Position
-        end
-        if g == "LowerTorso" then
-            W[g] = st.origin + st.scale * ANIME_PIVOT[g] + (relPos and (relPos - st.restRoot) or Vector3.zero)
-        else
-            local par = ANIME_PARENT[g]
+        local par = ANIME_PARENT[g]
+        if par then
             W[g] = W[par] + R[par] * (st.scale * (ANIME_PIVOT[g] - ANIME_PIVOT[par]))
+            R[g] = R[par] * localRot[g]
+        else
+            W[g] = st.origin + st.scale * ANIME_PIVOT[g]
+            R[g] = localRot[g]
         end
-        R[g] = rot
     end
+
+    local shift = Vector3.zero
+    if not air and not sitting then
+        local restAnkle = st.origin.Y + st.scale * ANIME_PIVOT.LeftFoot.Y
+        local lowest = math.min(W.LeftFoot.Y, W.RightFoot.Y)
+        shift = Vector3.new(0, restAnkle - lowest, 0)
+    end
+
+    local hrpCF = st.hrp.CFrame
     for _, item in ipairs(st.pieces) do
         local g = item.group
-        local pos = W[g] + R[g] * (st.scale * (item.center - ANIME_PIVOT[g]))
+        local pos = W[g] + shift + R[g] * (st.scale * (item.center - ANIME_PIVOT[g]))
         item.piece.CFrame = hrpCF * (CFrame.new(pos) * R[g])
     end
 end
@@ -1041,26 +1071,22 @@ local function applyAnime()
 
     local hrp = char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart", 5)
     if not hrp then return false, "no HumanoidRootPart" end
+    local hum = char:FindFirstChildOfClass("Humanoid")
 
-    local isR15 = char:FindFirstChild("UpperTorso") ~= nil
-    local foot = char:FindFirstChild(isR15 and "LeftFoot" or "Left Leg")
+    local foot = char:FindFirstChild("LeftFoot") or char:FindFirstChild("Left Leg")
     local head = char:FindFirstChild("Head")
-    log("anime: rig", isR15 and "R15" or "R6", "| foot", foot and foot.Name or "nil", "| head", head and head.Name or "nil")
-    if not (foot and head) then return false, "body parts not found" end
-    removeAnime()
-
-    local function relOf(part) return hrp.CFrame:ToObjectSpace(part.CFrame) end
-    local footBottom = relOf(foot).Position.Y - foot.Size.Y / 2
-    local headTop = relOf(head).Position.Y + head.Size.Y / 2
-    local scale = (headTop - footBottom) / ANIME_REF_H
-    log(string.format("anime: footBottom %.3f | headTop %.3f | scale %.3f", footBottom, headTop, scale))
-
-    local parts = {}
-    for _, g in ipairs(ANIME_ORDER) do
-        parts[g] = char:FindFirstChild(isR15 and g or R6_MAP[g])
-        if not parts[g] then log("anime: no body part for group", g) end
+    local footBottom, headTop
+    if foot and head then
+        footBottom = hrp.CFrame:ToObjectSpace(foot.CFrame).Position.Y - foot.Size.Y / 2
+        headTop = hrp.CFrame:ToObjectSpace(head.CFrame).Position.Y + head.Size.Y / 2
+    else
+        footBottom = -(hrp.Size.Y / 2 + (hum and hum.HipHeight or 0))
+        headTop = footBottom + 5
     end
-    if not parts.LowerTorso then return false, "torso not found" end
+    local scale = (headTop - footBottom) / ANIME_REF_H * CONFIG.AnimeScale
+    log("anime: foot", foot and foot.Name or "nil", "| head", head and head.Name or "nil", "| humanoid", hum ~= nil)
+    log(string.format("anime: footBottom %.3f | headTop %.3f | scale %.3f", footBottom, headTop, scale))
+    removeAnime()
 
     local atlas = animeAsset("atlas.png")
     animeFolder = new("Folder", {Name = "ZynthAnime"}, char)
@@ -1072,22 +1098,25 @@ local function applyAnime()
 
     local pieces = {}
     for _, p in ipairs(ANIME) do
-        local expected = Vector3.new(p[6], p[7], p[8])
-        local piece = newPiece(animeAsset(pieceFile(p)), atlas, p[2] == 1, expected * (scale / 10), scale / 10)
+        local piece = newPiece(animeAsset(pieceFile(p)), atlas, scale / 10)
         piece.Name = p[1] .. (p[2] == 1 and "_a" or "_s")
         piece.Parent = animeFolder
-        fitMesh(piece, expected, scale)
         table.insert(pieces, {piece = piece, group = p[1], center = Vector3.new(p[3], p[4], p[5])})
-        log("anime: piece", piece.Name, "|", piece.ClassName, "| group", p[1])
     end
+    log("anime: pieces created", #pieces)
+    probeMeshPart(hrp)
 
+    local cur = {}
+    for _, k in ipairs({"lean", "hipYaw", "utPitch", "utYaw", "headYaw", "aL", "aR", "kL", "kR", "fL", "fR", "bL", "bR", "zL", "zR", "eL", "eR"}) do
+        cur[k] = 0
+    end
     animeState = {
-        hrp = hrp, parts = parts, pieces = pieces, scale = scale,
-        origin = Vector3.new(0, footBottom, 0), restRoot = relOf(parts.LowerTorso).Position,
+        hrp = hrp, hum = hum, pieces = pieces, scale = scale, cur = cur, t = 0, phase = 0, amp = 0,
+        origin = Vector3.new(0, footBottom, 0),
     }
-    animeStep()
+    animeStep(0.016)
     RunService:BindToRenderStep("ZynthAnime", Enum.RenderPriority.Last.Value, animeStep)
-    log("anime: done | pieces", #pieces)
+    log("anime: done")
     return true
 end
 

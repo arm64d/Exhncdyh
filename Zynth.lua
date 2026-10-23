@@ -8,7 +8,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
-local BUILD = "v11-new-model"
+local BUILD = "v12-collision-fix"
 
 local function log(...)
     local parts = {}
@@ -937,7 +937,10 @@ end
 
 local function releaseEntry(entry)
     for _, e in ipairs(entry.parts) do
-        pcall(function() e.part.Anchored = e.anchored end)
+        pcall(function()
+            e.part.Anchored = e.anchored
+            e.part.CanCollide = e.collide
+        end)
     end
     for _, j in ipairs(entry.joints) do
         pcall(function() j.Enabled = true end)
@@ -989,7 +992,7 @@ local function collectParts(container)
 end
 
 local function attachContainer(st, container, tag, isTool)
-    if st.attachedSet[container] then return end
+    if st.attachedSet[container] or st.failed[container] then return end
     local parts = collectParts(container)
     if #parts == 0 then return end
     local set = {}
@@ -997,21 +1000,31 @@ local function attachContainer(st, container, tag, isTool)
 
     local char = st.char
     local body
-    local joints = {}
-    local function scan(root)
-        for _, d in ipairs(root:GetDescendants()) do
-            if d:IsA("JointInstance") or d:IsA("WeldConstraint") then
-                local p0, p1 = d.Part0, d.Part1
-                if p0 and p1 and ((set[p0] and not set[p1]) or (set[p1] and not set[p0])) then
-                    table.insert(joints, d)
-                    local other = set[p0] and p1 or p0
-                    if not body and other.Parent == char and st.bodyMap[other.Name] then body = other end
+    local joints, seen = {}, {}
+    for _, p in ipairs(parts) do
+        local ok, list = pcall(function() return p:GetJoints() end)
+        if ok then
+            for _, j in ipairs(list) do
+                if not seen[j] then
+                    seen[j] = true
+                    local ok0, p0 = pcall(function() return j.Part0 end)
+                    local ok1, p1 = pcall(function() return j.Part1 end)
+                    local outside, other = true, nil
+                    if ok0 and ok1 and p0 and p1 then
+                        if set[p0] and set[p1] then
+                            outside = false
+                        else
+                            other = set[p0] and p1 or p0
+                        end
+                    end
+                    if outside then
+                        table.insert(joints, j)
+                        if other and not body and other.Parent == char and st.bodyMap[other.Name] then body = other end
+                    end
                 end
             end
         end
     end
-    scan(char)
-    if not container:IsDescendantOf(char) then scan(container) end
 
     if not body then
         local ref = parts[1].Position
@@ -1038,10 +1051,32 @@ local function attachContainer(st, container, tag, isTool)
             local pos = rel.Position
             rel = CFrame.new(pos.X * scaleVec.X, pos.Y * scaleVec.Y, pos.Z * scaleVec.Z) * (rel - pos)
         end
-        table.insert(entry.parts, {part = p, rel = rel, anchored = p.Anchored})
+        table.insert(entry.parts, {part = p, rel = rel, anchored = p.Anchored, collide = p.CanCollide})
     end
+
     for _, j in ipairs(joints) do pcall(function() j.Enabled = false end) end
-    for _, e in ipairs(entry.parts) do pcall(function() e.part.Anchored = true end) end
+    for _, e in ipairs(entry.parts) do
+        pcall(function()
+            e.part.CanCollide = false
+            e.part.Anchored = true
+        end)
+    end
+
+    local linked = false
+    for _, p in ipairs(parts) do
+        local ok, connected = pcall(function() return p:GetConnectedParts(true) end)
+        if ok then
+            for _, q in ipairs(connected) do
+                if q.Parent == char then linked = true end
+            end
+        end
+    end
+    if linked then
+        releaseEntry(entry)
+        st.failed[container] = true
+        log("anime: SKIPPED", tag, container.Name, "- still physically linked to the character")
+        return
+    end
 
     st.attachedSet[container] = entry
     table.insert(st.attached, entry)
@@ -1255,7 +1290,7 @@ local function applyAnime()
         char = char, hrp = hrp, hum = hum, pieces = pieces, center = center, scale = scale, cur = cur,
         t = 0, phase = 0, amp = 0, hold = 0, scanT = 1,
         origin = Vector3.new(0, footBottom, 0), bodyMap = isR15 and BODY_R15 or BODY_R6,
-        rightOrig = rightOrig, attached = {}, attachedSet = {}, seen = {},
+        rightOrig = rightOrig, attached = {}, attachedSet = {}, failed = {}, seen = {},
     }
     animeStep(0.016)
     RunService:BindToRenderStep("ZynthAnime", Enum.RenderPriority.Last.Value, animeStep)

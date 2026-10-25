@@ -8,7 +8,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
-local BUILD = "v12-collision-fix"
+local BUILD = "v13-hair-antiaim"
 
 local function log(...)
     local parts = {}
@@ -695,6 +695,7 @@ local function addSettings(card, entry, items)
     new("UIPadding", {PaddingTop = UDim.new(0, 2)}, panel)
     entry.Panel = panel
 
+    local opts = {}
     for i, item in ipairs(items) do
         local opt = new("TextButton", {
             Size = UDim2.new(1, 0, 0, 26), BackgroundTransparency = 1, Text = "",
@@ -705,13 +706,29 @@ local function addSettings(card, entry, items)
             Text = item.label, Font = Enum.Font.GothamMedium, TextSize = 10,
             TextColor3 = THEME.TextMuted, TextXAlignment = Enum.TextXAlignment.Left,
         }, opt)
-        local state = item.default
-        local setOpt = makeSwitch(opt, UDim2.new(1, -12, 0.5, 0), state)
+        local rec = {item = item, state = item.default and true or false}
+        rec.set = makeSwitch(opt, UDim2.new(1, -12, 0.5, 0), rec.state)
+        opts[i] = rec
         opt.MouseButton1Click:Connect(function()
-            state = not state
-            play(state and "ToggleOn" or "ToggleOff")
-            setOpt(state)
-            item.onChange(state)
+            if item.group then
+                if rec.state then return end
+                for _, other in ipairs(opts) do
+                    if other ~= rec and other.item.group == item.group and other.state then
+                        other.state = false
+                        other.set(false)
+                        other.item.onChange(false)
+                    end
+                end
+                rec.state = true
+                rec.set(true)
+                play("ToggleOn")
+                item.onChange(true)
+            else
+                rec.state = not rec.state
+                play(rec.state and "ToggleOn" or "ToggleOff")
+                rec.set(rec.state)
+                item.onChange(rec.state)
+            end
         end)
     end
 
@@ -742,16 +759,17 @@ local function addSettings(card, entry, items)
     }, gear), 2)
 
     local open = false
+    local spin = TweenInfo.new(1.1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+    local slide = TweenInfo.new(0.75, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+    local tint = TweenInfo.new(0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
     gearBtn.MouseButton1Click:Connect(function()
         open = not open
         play("Click")
-        tw(gear, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Rotation = open and 180 or 0})
+        tw(gear, spin, {Rotation = open and 180 or 0})
         for _, part in ipairs(parts) do
-            tw(part, TWEEN_FAST, {BackgroundColor3 = open and THEME.Accent or THEME.TextMuted})
+            tw(part, tint, {BackgroundColor3 = open and THEME.Accent or THEME.TextMuted})
         end
-        tw(panel, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-            Size = UDim2.new(1, 0, 0, open and height or 0),
-        })
+        tw(panel, slide, {Size = UDim2.new(1, 0, 0, open and height or 0)})
     end)
 end
 
@@ -796,27 +814,34 @@ addToggle(other, "No Friend Damage", nil, true, nil)
 local ANIME_DIR = "ZynthAnime/"
 local ANIME_REF_H = 3.10
 local ANIME = {
-    {"LowerTorso", 0, -0.0001, 1.8037, 0.0270, 7.7719, 9.4428, 6.3279},
-    {"UpperTorso", 0, 0.0000, 2.4534, -0.0279, 4.4760, 5.4562, 3.9875},
-    {"Head", 1, 0.0000, 2.8292, 0.1094, 6.3902, 6.2981, 5.8596},
+    {"LowerTorso", 0, -0.0001, 1.7743, 0.0270, 7.7719, 10.0319, 6.3279},
+    {"UpperTorso", 0, 0.0000, 2.4334, -0.0279, 4.4760, 5.8568, 3.9875},
+    {"Head", 1, 0.0000, 2.8800, 0.1292, 5.8896, 4.5547, 5.4145},
     {"Head", 0, 0.0000, 2.8277, 0.0653, 4.1169, 4.8485, 4.4841},
-    {"LeftUpperArm", 0, -0.2763, 2.1963, 0.0622, 1.7182, 4.8872, 1.5171},
-    {"LeftLowerArm", 0, -0.3438, 1.8269, 0.0555, 1.6222, 3.3180, 1.6328},
+    {"LeftUpperArm", 0, -0.2729, 2.1963, 0.0622, 1.7865, 4.8872, 1.5171},
+    {"LeftLowerArm", 0, -0.3437, 1.8311, 0.0555, 1.6235, 3.4689, 1.6328},
     {"LeftHand", 0, -0.4480, 1.5941, -0.0159, 1.3816, 1.9821, 1.2716},
-    {"RightUpperArm", 0, 0.2763, 2.1963, 0.0622, 1.7182, 4.8872, 1.5171},
-    {"RightLowerArm", 0, 0.3438, 1.8269, 0.0555, 1.6222, 3.3180, 1.6328},
+    {"RightUpperArm", 0, 0.2729, 2.1963, 0.0622, 1.7865, 4.8872, 1.5171},
+    {"RightLowerArm", 0, 0.3437, 1.8311, 0.0555, 1.6235, 3.4689, 1.6328},
     {"RightHand", 0, 0.4480, 1.5941, -0.0159, 1.3816, 1.9821, 1.2716},
     {"LeftUpperLeg", 0, -0.1228, 1.1130, 0.0397, 2.0620, 5.8120, 2.0324},
     {"LeftLowerLeg", 0, -0.1172, 0.5434, 0.0807, 1.5887, 7.2963, 2.4081},
-    {"LeftFoot", 0, -0.1187, 0.1067, -0.0299, 1.9691, 2.1337, 3.5356},
+    {"LeftFoot", 0, -0.1203, 0.1067, -0.0326, 1.8032, 2.1337, 3.5884},
     {"RightUpperLeg", 0, 0.1228, 1.1130, 0.0397, 2.0620, 5.8120, 2.0324},
     {"RightLowerLeg", 0, 0.1172, 0.5434, 0.0807, 1.5887, 7.2963, 2.4081},
-    {"RightFoot", 0, 0.1187, 0.1067, -0.0299, 1.9691, 2.1337, 3.5356},
+    {"RightFoot", 0, 0.1203, 0.1067, -0.0326, 1.8032, 2.1337, 3.5884},
+    {"HairBack", 0, 0.0000, 2.6736, 0.2116, 6.0044, 3.1857, 3.8165},
+    {"HairLeft", 0, -0.1955, 2.7564, -0.0237, 1.6193, 2.2259, 2.1684},
+    {"HairRight", 0, 0.1955, 2.7564, -0.0237, 1.6193, 2.2259, 2.1684},
+    {"Bangs", 0, 0.0065, 2.9221, -0.0455, 1.6798, 3.5656, 2.7607},
+    {"EarLeft", 0, -0.2093, 3.0360, 0.1312, 2.2044, 2.1624, 0.9785},
+    {"EarRight", 0, 0.2093, 3.0360, 0.1312, 2.2044, 2.1624, 0.9785},
 }
 local ANIME_ORDER = {
     "LowerTorso", "UpperTorso", "Head",
     "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand",
     "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot",
+    "HairBack", "HairLeft", "HairRight", "Bangs", "EarLeft", "EarRight",
 }
 local ANIME_PARENT = {
     UpperTorso = "LowerTorso", Head = "UpperTorso",
@@ -824,6 +849,7 @@ local ANIME_PARENT = {
     RightUpperArm = "UpperTorso", RightLowerArm = "RightUpperArm", RightHand = "RightLowerArm",
     LeftUpperLeg = "LowerTorso", LeftLowerLeg = "LeftUpperLeg", LeftFoot = "LeftLowerLeg",
     RightUpperLeg = "LowerTorso", RightLowerLeg = "RightUpperLeg", RightFoot = "RightLowerLeg",
+    HairBack = "Head", HairLeft = "Head", HairRight = "Head", Bangs = "Head", EarLeft = "Head", EarRight = "Head",
 }
 local ANIME_PIVOT = {
     LowerTorso = Vector3.new(-0.0000, 1.6634, 0.0300),
@@ -841,6 +867,25 @@ local ANIME_PIVOT = {
     RightUpperLeg = Vector3.new(0.1100, 1.6634, 0.0300),
     RightLowerLeg = Vector3.new(0.1100, 0.8934, 0.0400),
     RightFoot = Vector3.new(0.1000, 0.1334, 0.1000),
+    HairBack = Vector3.new(-0.0044, 2.8038, 0.2713),
+    HairLeft = Vector3.new(-0.2200, 2.8403, -0.0294),
+    HairRight = Vector3.new(0.2200, 2.8403, -0.0294),
+    Bangs = Vector3.new(0.0018, 3.1000, 0.0664),
+    EarLeft = Vector3.new(-0.2057, 2.9514, 0.1124),
+    EarRight = Vector3.new(0.2057, 2.9514, 0.1124),
+}
+local HAIR_PARAMS = {
+    HairBack = {K = 60, C = 6.5, kA = 0.0040, kV = 0.014, lim = 0.75, fx = -0.7, ph = 0.0},
+    HairLeft = {K = 85, C = 8, kA = 0.0030, kV = 0.010, lim = 0.6, side = -1, ph = 1.3},
+    HairRight = {K = 85, C = 8, kA = 0.0030, kV = 0.010, lim = 0.6, side = 1, ph = 2.1},
+    Bangs = {K = 130, C = 10, kA = 0.0016, kV = 0.005, lim = 0.4, fx = 0.3, ph = 0.7},
+    EarLeft = {K = 240, C = 12, kA = 0.0014, kV = 0.003, lim = 0.3, side = -1, twitch = true, ph = 0.4},
+    EarRight = {K = 240, C = 12, kA = 0.0014, kV = 0.003, lim = 0.3, side = 1, twitch = true, ph = 2.9},
+}
+local HOLD_FIXED = {
+    RightUpperArm = CFrame.Angles(1.4, 0, -0.04),
+    RightLowerArm = CFrame.Angles(0.25, 0, 0),
+    RightHand = CFrame.new(),
 }
 local BODY_R15 = {
     HumanoidRootPart = "LowerTorso", LowerTorso = "LowerTorso", UpperTorso = "UpperTorso", Head = "Head",
@@ -857,6 +902,11 @@ local BODY_R6 = {
 local REL_SCALE = {
     UpperTorso = Vector3.new(0.45, 1, 0.6),
     LowerTorso = Vector3.new(0.45, 1, 0.6),
+}
+
+local AA = {
+    active = false, mode = "Jitter", level = "Medium", t = 0, nextT = 0, rootYaw = 0,
+    jp = 0, jy = 0, jr = 0, jl = 0, joints = {}, rng = Random.new(),
 }
 
 local Toast = new("TextLabel", {
@@ -920,7 +970,7 @@ local function animeFilesReady()
             end
             log("anime: workspace root contains:", table.concat(list, ", "))
         end)
-        return false, "missing " .. #missing .. " file(s), see Delta console"
+        return false, "missing " .. #missing .. " file(s): extract the new ZynthAnime folder again"
     end
     log("anime: all", #ANIME + 1, "files found")
     return true
@@ -1097,79 +1147,171 @@ local function scanAttachments(st)
     end
 end
 
+local function sat(x)
+    return x > 0 and x or 0
+end
+
+local function updateHair(st, dt, headWorld, vel)
+    local acc = (vel - st.prevVel) / math.max(dt, 0.001)
+    st.prevVel = vel
+    if acc.Magnitude > 200 then acc = acc.Unit * 200 end
+    st.acc = st.acc:Lerp(acc, math.min(1, dt * 12))
+    local vL = headWorld:VectorToObjectSpace(vel)
+    local aL = headWorld:VectorToObjectSpace(st.acc)
+    local flare = math.clamp(-vel.Y * 0.012, 0, 0.5)
+    local sdt = math.min(dt, 1 / 30)
+    local out = {}
+    for g, p in pairs(HAIR_PARAMS) do
+        local h = st.hair[g]
+        local tx = math.clamp(p.kA * aL.Z + p.kV * vL.Z, -p.lim, p.lim) + 0.015 * math.sin(st.t * 1.6 + p.ph)
+        local tz = math.clamp(-(p.kA * aL.X + p.kV * vL.X), -p.lim, p.lim) + 0.012 * math.cos(st.t * 1.3 + p.ph)
+        if p.side then tz = tz + p.side * flare end
+        if p.fx then tx = tx + p.fx * flare end
+        if p.twitch and st.t > st.twitchAt[g] then
+            h.vz = h.vz + (math.random() - 0.5) * 16
+            st.twitchAt[g] = st.t + 2.5 + math.random() * 4
+        end
+        h.vx = h.vx + ((tx - h.x) * p.K - h.vx * p.C) * sdt
+        h.x = math.clamp(h.x + h.vx * sdt, -p.lim * 1.3, p.lim * 1.3)
+        h.vz = h.vz + ((tz - h.z) * p.K - h.vz * p.C) * sdt
+        h.z = math.clamp(h.z + h.vz * sdt, -p.lim * 1.3, p.lim * 1.3)
+        out[g] = CFrame.Angles(h.x, 0, h.z)
+    end
+    return out
+end
+
 local function animeStep(dt)
     local st = animeState
     if not st or not st.hrp.Parent then return end
+    dt = math.clamp(dt, 0.001, 0.1)
 
     local hum = st.hum
     local vel = st.hrp.AssemblyLinearVelocity
     local speed = Vector3.new(vel.X, 0, vel.Z).Magnitude
     local sitting = hum and hum.Sit or false
-    local air = (not sitting) and hum and hum.FloorMaterial == Enum.Material.Air or false
+    local floorAir = hum and hum.FloorMaterial == Enum.Material.Air or false
+    local air = (not sitting) and floorAir and math.abs(vel.Y) > 1.5
     local moving = (not air) and (not sitting) and speed > 0.6
 
     st.t = st.t + dt
-    local targetAmp = moving and math.clamp(speed / 16, 0.3, 1.4) or 0
-    st.amp = st.amp + (targetAmp - st.amp) * math.min(1, dt * 10)
-    st.phase = st.phase + dt * speed * 0.65
+    if st.wasAir and not air and not sitting then
+        st.landStr = math.clamp(-st.lastVy / 55, 0.25, 1)
+        st.landT = 0.34
+    end
+    st.wasAir = air
+    if air then st.lastVy = vel.Y end
+    st.landT = math.max(0, st.landT - dt)
+
+    local targetAmp = moving and math.clamp(speed / 16, 0.3, 1.8) or 0
+    st.amp = st.amp + (targetAmp - st.amp) * math.min(1, dt * 8)
+    st.phase = st.phase + dt * speed * 0.62
 
     local holding = st.char:FindFirstChildOfClass("Tool") ~= nil
-    st.hold = st.hold + ((holding and 1 or 0) - st.hold) * math.min(1, dt * 8)
+    st.hold = st.hold + ((holding and 1 or 0) - st.hold) * math.min(1, dt * 7)
 
-    local ph, a = st.phase, st.amp
-    local sw = math.sin(ph) * a
+    local a = st.amp
+    local am = math.min(a, 1.5)
+    local ph = st.phase
+    local s, c = math.sin(ph), math.cos(ph)
+    local w = math.min(1, a / 0.3)
+    local run = math.clamp((a - 1) / 0.6, 0, 1)
+    local idle = 1 - w
+    local sway = math.sin(st.t * 0.9)
     local breathe = math.sin(st.t * 1.8)
 
-    local aL, aR = 0.75 * sw, -0.75 * sw
-    local kL = 0.95 * math.max(0, math.cos(ph)) * a
-    local kR = 0.95 * math.max(0, -math.cos(ph)) * a
-    local bL, bR = -0.65 * sw, 0.65 * sw
-    local eL = 0.1 + 0.55 * a * math.max(0, bL / 0.65 + 0.3)
-    local eR = 0.1 + 0.55 * a * math.max(0, bR / 0.65 + 0.3)
-    local zL, zR = -0.1 - 0.03 * breathe, 0.1 + 0.03 * breathe
-    local lean, hipYaw = -0.12 * a, 0.1 * math.sin(ph) * a
-    local utPitch, utYaw = 0.012 * breathe, -0.2 * math.sin(ph) * a
-    local headYaw = 0.12 * math.sin(ph) * a
+    local legAmp = (0.36 + 0.30 * am) * w
+    local kneePk = (0.6 + 0.5 * am) * w
+    local armAmp = (0.28 + 0.30 * am) * w
+
+    local aL, aR = legAmp * s, -legAmp * s
+    local kL = 0.05 + 0.10 * w * sat(s) + kneePk * sat(math.cos(ph + 0.2)) ^ 2
+    local kR = 0.05 + 0.10 * w * sat(-s) + kneePk * sat(math.cos(ph + math.pi + 0.2)) ^ 2
+    local fL = -(aL - kL) * 0.85 - 0.3 * w * math.min(a, 1.2) * sat(-s)
+    local fR = -(aR - kR) * 0.85 - 0.3 * w * math.min(a, 1.2) * sat(s)
+    local bL, bR = -armAmp * s, armAmp * s
+    local eL = 0.18 + 0.30 * w + 0.25 * w * sat(bL / math.max(armAmp, 0.01)) + 0.5 * run
+    local eR = 0.18 + 0.30 * w + 0.25 * w * sat(bR / math.max(armAmp, 0.01)) + 0.5 * run
+    local zL, zR = -0.10 - 0.02 * w - 0.015 * breathe * idle, 0.10 + 0.02 * w + 0.015 * breathe * idle
+    local lean = -(0.03 + 0.07 * am) * w - 0.05 * run
+    local hipYaw = 0.07 * am * s * w + 0.02 * sway * idle
+    local hipRoll = 0.035 * am * c * w + 0.014 * sway * idle
+    local utPitch = 0.012 * breathe
+    local utYaw = -0.12 * am * s * w
+    local utRoll = -0.6 * hipRoll
+    local headYaw = 0.05 * am * s * w + 0.025 * math.sin(st.t * 0.7) * idle
+    local headPitch = -lean * 0.6 + 0.012 * math.sin(st.t * 1.1) * idle
+    bL = bL + 0.03 * sway * idle
+    bR = bR - 0.03 * sway * idle
 
     if sitting then
         aL, aR, kL, kR = 1.45, 1.45, 1.45, 1.45
+        fL, fR = 0, 0
         bL, bR, eL, eR = 0.5, 0.5, 1.0, 1.0
-        lean, hipYaw, utYaw, headYaw = 0, 0, 0, 0
+        lean, hipYaw, hipRoll, utYaw, utRoll, headYaw, headPitch = 0, 0, 0, 0, 0, 0, 0
     elseif air then
-        aL, aR, kL, kR = 0.5, -0.35, 0.7, 0.9
-        bL, bR, eL, eR = 0.2, 0.2, 0.3, 0.3
-        zL, zR = -0.8, 0.8
-        lean, hipYaw, utYaw, headYaw = 0, 0, 0, 0
+        local r = math.clamp(vel.Y / 14, 0, 1)
+        local f = math.clamp(-vel.Y / 14, 0, 1)
+        local ap = 1 - math.max(r, f)
+        aL = r * 0.6 + ap * 0.28 + f * 0.22
+        aR = r * -0.15 + ap * 0.02 + f * -0.12
+        kL = r * 0.9 + ap * 0.5 + f * 0.28
+        kR = r * 0.55 + ap * 0.4 + f * 0.2
+        fL = r * -0.3 + ap * -0.1 + f * 0.2
+        fR = r * -0.2 + ap * -0.1 + f * 0.2
+        bL = r * 1.45 + ap * 0.5 + f * 0.25
+        bR = r * 1.45 + ap * 0.5 + f * 0.25
+        zL = r * -0.25 + ap * -0.7 + f * -0.95
+        zR = r * 0.25 + ap * 0.7 + f * 0.95
+        eL = r * 0.4 + ap * 0.25 + f * 0.15
+        eR = eL
+        lean = r * -0.06 + f * 0.03
+        hipYaw, hipRoll, utYaw, utRoll, headYaw = 0, 0, 0, 0, 0
+        headPitch = -lean * 0.6
+    elseif st.landT > 0 then
+        local k = st.landT / 0.34
+        k = k * k * (3 - 2 * k)
+        local ls = st.landStr * k
+        aL, aR = aL + 0.55 * ls, aR + 0.5 * ls
+        kL, kR = kL + 0.95 * ls, kR + 0.95 * ls
+        fL, fR = fL - 0.35 * ls, fR - 0.35 * ls
+        lean = lean - 0.22 * ls
+        bL, bR = bL + 0.4 * ls, bR + 0.4 * ls
+        headPitch = -lean * 0.6
     end
 
     local target = {
-        lean = lean, hipYaw = hipYaw, utPitch = utPitch, utYaw = utYaw, headYaw = headYaw,
-        aL = aL, aR = aR, kL = kL, kR = kR,
-        fL = sitting and 0 or -(aL - kL) * 0.75, fR = sitting and 0 or -(aR - kR) * 0.75,
+        lean = lean, hipYaw = hipYaw, hipRoll = hipRoll, utPitch = utPitch, utYaw = utYaw, utRoll = utRoll,
+        headYaw = headYaw, headPitch = headPitch,
+        aL = aL, aR = aR, kL = kL, kR = kR, fL = fL, fR = fR,
         bL = bL, bR = bR, zL = zL, zR = zR, eL = eL, eR = eR,
     }
-    local blend = math.min(1, dt * 16)
-    local c = st.cur
-    for k, v in pairs(target) do c[k] = c[k] + (v - c[k]) * blend end
+    local blend = math.min(1, dt * (air and 9 or 13))
+    local cur = st.cur
+    for k, v in pairs(target) do cur[k] = cur[k] + (v - cur[k]) * blend end
 
     local localRot = {
-        LowerTorso = CFrame.Angles(c.lean, c.hipYaw, 0),
-        UpperTorso = CFrame.Angles(c.utPitch, c.utYaw, 0),
-        Head = CFrame.Angles(0, c.headYaw, 0),
-        LeftUpperArm = CFrame.Angles(c.bL, 0, c.zL), LeftLowerArm = CFrame.Angles(c.eL, 0, 0), LeftHand = CFrame.new(),
-        RightUpperArm = CFrame.Angles(c.bR, 0, c.zR), RightLowerArm = CFrame.Angles(c.eR, 0, 0), RightHand = CFrame.new(),
-        LeftUpperLeg = CFrame.Angles(c.aL, 0, 0), LeftLowerLeg = CFrame.Angles(-c.kL, 0, 0), LeftFoot = CFrame.Angles(c.fL, 0, 0),
-        RightUpperLeg = CFrame.Angles(c.aR, 0, 0), RightLowerLeg = CFrame.Angles(-c.kR, 0, 0), RightFoot = CFrame.Angles(c.fR, 0, 0),
+        LowerTorso = CFrame.Angles(cur.lean, cur.hipYaw, cur.hipRoll),
+        UpperTorso = CFrame.Angles(cur.utPitch, cur.utYaw, cur.utRoll),
+        Head = CFrame.Angles(cur.headPitch, cur.headYaw, 0),
+        LeftUpperArm = CFrame.Angles(cur.bL, 0, cur.zL), LeftLowerArm = CFrame.Angles(cur.eL, 0, 0), LeftHand = CFrame.new(),
+        RightUpperArm = CFrame.Angles(cur.bR, 0, cur.zR), RightLowerArm = CFrame.Angles(cur.eR, 0, 0), RightHand = CFrame.new(),
+        LeftUpperLeg = CFrame.Angles(cur.aL, 0, 0), LeftLowerLeg = CFrame.Angles(-cur.kL, 0, 0), LeftFoot = CFrame.Angles(cur.fL, 0, 0),
+        RightUpperLeg = CFrame.Angles(cur.aR, 0, 0), RightLowerLeg = CFrame.Angles(-cur.kR, 0, 0), RightFoot = CFrame.Angles(cur.fR, 0, 0),
     }
 
     local hrpCF = st.hrp.CFrame
     local inv = hrpCF:Inverse()
 
     local W, R = {}, {}
+    local hairRot
     for _, g in ipairs(ANIME_ORDER) do
         local par = ANIME_PARENT[g]
         local rot
-        if par then
+        if HAIR_PARAMS[g] then
+            if not hairRot then hairRot = updateHair(st, dt, hrpCF * R.Head, vel) end
+            W[g] = W[par] + R[par] * (st.scale * (ANIME_PIVOT[g] - ANIME_PIVOT[par]))
+            rot = R[par] * hairRot[g]
+        elseif par then
             W[g] = W[par] + R[par] * (st.scale * (ANIME_PIVOT[g] - ANIME_PIVOT[par]))
             rot = R[par] * localRot[g]
         else
@@ -1178,8 +1320,12 @@ local function animeStep(dt)
         end
         local orig = st.rightOrig[g]
         if orig and st.hold > 0.001 then
-            local rel = inv * orig.CFrame
-            rot = rot:Lerp(rel - rel.Position, st.hold)
+            if AA.active then
+                rot = rot:Lerp(R[par] * HOLD_FIXED[g], st.hold)
+            else
+                local rel = inv * orig.CFrame
+                rot = rot:Lerp(rel - rel.Position, st.hold)
+            end
         end
         R[g] = rot
     end
@@ -1266,9 +1412,9 @@ local function applyAnime()
         local piece = newPiece(animeAsset(pieceFile(p)), atlas, scale / 10)
         piece.Name = p[1] .. (p[2] == 1 and "_a" or "_s")
         piece.Parent = animeFolder
-        local c = Vector3.new(p[3], p[4], p[5])
-        table.insert(pieces, {piece = piece, group = p[1], center = c})
-        if p[2] == 0 and not center[p[1]] then center[p[1]] = c end
+        local cpos = Vector3.new(p[3], p[4], p[5])
+        table.insert(pieces, {piece = piece, group = p[1], center = cpos})
+        if p[2] == 0 and not center[p[1]] then center[p[1]] = cpos end
     end
     log("anime: pieces created", #pieces)
 
@@ -1283,14 +1429,21 @@ local function applyAnime()
     end
 
     local cur = {}
-    for _, k in ipairs({"lean", "hipYaw", "utPitch", "utYaw", "headYaw", "aL", "aR", "kL", "kR", "fL", "fR", "bL", "bR", "zL", "zR", "eL", "eR"}) do
+    for _, k in ipairs({"lean", "hipYaw", "hipRoll", "utPitch", "utYaw", "utRoll", "headYaw", "headPitch",
+        "aL", "aR", "kL", "kR", "fL", "fR", "bL", "bR", "zL", "zR", "eL", "eR"}) do
         cur[k] = 0
+    end
+    local hair, twitchAt = {}, {}
+    for g in pairs(HAIR_PARAMS) do
+        hair[g] = {x = 0, z = 0, vx = 0, vz = 0}
+        twitchAt[g] = 1 + math.random() * 3
     end
     animeState = {
         char = char, hrp = hrp, hum = hum, pieces = pieces, center = center, scale = scale, cur = cur,
-        t = 0, phase = 0, amp = 0, hold = 0, scanT = 1,
+        t = 0, phase = 0, amp = 0, hold = 0, scanT = 1, wasAir = false, lastVy = 0, landT = 0, landStr = 0,
         origin = Vector3.new(0, footBottom, 0), bodyMap = isR15 and BODY_R15 or BODY_R6,
         rightOrig = rightOrig, attached = {}, attachedSet = {}, failed = {}, seen = {},
+        hair = hair, twitchAt = twitchAt, prevVel = hrp.AssemblyLinearVelocity, acc = Vector3.zero,
     }
     animeStep(0.016)
     RunService:BindToRenderStep("ZynthAnime", Enum.RenderPriority.Last.Value, animeStep)
@@ -1329,12 +1482,135 @@ animeEntry = addToggle(model, "Anime Model", "Replaces your avatar with a 3D mod
     end
 end)
 
+local AA_LEVEL_MUL = {Low = 0.55, Medium = 1, High = 1.5}
+local AA_LEVEL_RATE = {Low = 7, Medium = 14, High = 28}
+local AA_NAMES = {
+    Neck = "neck", RightShoulder = "rs", ["Right Shoulder"] = "rs", LeftShoulder = "ls", ["Left Shoulder"] = "ls",
+    Root = "root", RootJoint = "root",
+}
+
+local function aaBase(j)
+    if j:IsA("Motor6D") then return j.C0 end
+    local att = j.Attachment0
+    return att and att.CFrame or nil
+end
+
+local function aaSet(j, cf)
+    if j:IsA("Motor6D") then
+        j.C0 = cf
+    elseif j.Attachment0 then
+        j.Attachment0.CFrame = cf
+    end
+end
+
+local function aaCollect(char)
+    AA.joints = {}
+    AA.char = char
+    for _, d in ipairs(char:GetDescendants()) do
+        local key = AA_NAMES[d.Name]
+        if key and (d:IsA("Motor6D") or d:IsA("AnimationConstraint")) then
+            local base = aaBase(d)
+            if base then AA.joints[key] = {joint = d, base = base} end
+        end
+    end
+    local names = {}
+    for k in pairs(AA.joints) do table.insert(names, k) end
+    log("anti-aim: joints found:", #names > 0 and table.concat(names, ", ") or "none")
+end
+
+local function aaRestore()
+    for _, e in pairs(AA.joints) do
+        pcall(function() aaSet(e.joint, e.base) end)
+    end
+end
+
+local function aaStep(dt)
+    if not AA.active or not AA.char or not AA.char.Parent then return end
+    AA.t = AA.t + dt
+    local L, rate = AA_LEVEL_MUL[AA.level], AA_LEVEL_RATE[AA.level]
+    local mode = AA.mode
+    local np, ny, rsp, lsp = 0, 0, 0, 0
+    if mode == "Up" then
+        np, rsp, lsp = -0.95 * L, 2.3 * math.min(L, 1.2), 2.3 * math.min(L, 1.2)
+    elseif mode == "Down" then
+        np, rsp, lsp = 0.85 * L, -1.3 * L, -1.3 * L
+    end
+    if mode == "Spin" or mode == "Mix" then
+        AA.rootYaw = (AA.rootYaw + dt * rate * 0.9) % (math.pi * 2)
+    end
+    if mode == "Jitter" or mode == "Mix" then
+        if AA.t >= AA.nextT then
+            AA.nextT = AA.t + 1 / rate
+            AA.jp = (AA.rng:NextNumber() * 2 - 1) * 1.1 * L
+            AA.jy = (AA.rng:NextNumber() * 2 - 1) * 1.4 * L
+            AA.jr = (AA.rng:NextNumber() * 3.6 - 1.2) * L
+            AA.jl = (AA.rng:NextNumber() * 3.6 - 1.2) * L
+        end
+        np, ny, rsp, lsp = AA.jp, AA.jy, AA.jr, AA.jl
+    end
+    local j = AA.joints
+    if j.neck then aaSet(j.neck.joint, j.neck.base * CFrame.Angles(np, ny, 0)) end
+    if j.rs then aaSet(j.rs.joint, j.rs.base * CFrame.Angles(rsp, 0, 0)) end
+    if j.ls then aaSet(j.ls.joint, j.ls.base * CFrame.Angles(lsp, 0, 0)) end
+    if j.root then aaSet(j.root.joint, j.root.base * CFrame.Angles(0, AA.rootYaw, 0)) end
+end
+
+local function aaEnable()
+    if AA.active then return end
+    local char = LocalPlayer.Character
+    if char then aaCollect(char) end
+    AA.active = true
+    AA.conn = RunService.Stepped:Connect(function(_, dt) aaStep(dt) end)
+    log("anti-aim: ON | mode", AA.mode, "| level", AA.level)
+end
+
+local function aaDisable()
+    if not AA.active then return end
+    AA.active = false
+    if AA.conn then
+        AA.conn:Disconnect()
+        AA.conn = nil
+    end
+    aaRestore()
+    log("anti-aim: OFF")
+end
+
+local aaCard = createCard(Col1, "Anti Aim", 4)
+local aaEntry = addToggle(aaCard, "Anti-Aim", "Shifts head and arms to break head aim", false, nil, function(on)
+    if on then aaEnable() else aaDisable() end
+end)
+local aaItems = {}
+for _, m in ipairs({"Up", "Down", "Spin", "Jitter", "Mix"}) do
+    table.insert(aaItems, {
+        label = "Mode: " .. m, default = m == AA.mode, group = "mode",
+        onChange = function(on)
+            if on then
+                AA.mode = m
+                log("anti-aim: mode", m)
+            end
+        end,
+    })
+end
+for _, l in ipairs({"Low", "Medium", "High"}) do
+    table.insert(aaItems, {
+        label = "Level: " .. l, default = l == AA.level, group = "level",
+        onChange = function(on)
+            if on then
+                AA.level = l
+                log("anti-aim: level", l)
+            end
+        end,
+    })
+end
+addSettings(aaCard, aaEntry, aaItems)
+
 LocalPlayer.CharacterAdded:Connect(function(char)
-    log("character added:", char.Name, "| anime on:", animeOn)
-    if not animeOn then return end
+    log("character added:", char.Name, "| anime on:", animeOn, "| anti-aim on:", AA.active)
+    if not (animeOn or AA.active) then return end
     char:WaitForChild("HumanoidRootPart", 10)
     char:WaitForChild("Humanoid", 10)
     task.wait(1)
+    if AA.active then aaCollect(char) end
     if animeOn then
         local ran, ok, reason = xpcall(applyAnime, function(e)
             log("anime: ERROR on respawn", e)
@@ -1342,6 +1618,12 @@ LocalPlayer.CharacterAdded:Connect(function(char)
         end)
         if not (ran and ok) then log("anime: respawn apply failed:", ran and reason or ok) end
     end
+end)
+
+ScreenGui.Destroying:Connect(function()
+    animeOn = false
+    removeAnime()
+    aaDisable()
 end)
 
 local WM_ORDER = {"Name", "Nickname", "FPS", "Ping", "Time", "Players"}

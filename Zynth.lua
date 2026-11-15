@@ -8,7 +8,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
-local BUILD = "v13-hair-antiaim"
+local BUILD = "v14-strands"
 
 local function log(...)
     local parts = {}
@@ -814,46 +814,89 @@ addToggle(other, "No Friend Damage", nil, true, nil)
 local ANIME_DIR = "ZynthAnime/"
 local ANIME_REF_H = 3.10
 local ANIME = {
-    {"LowerTorso", 0, -0.0001, 1.7743, 0.0270, 7.7719, 10.0319, 6.3279},
-    {"UpperTorso", 0, 0.0000, 2.4334, -0.0279, 4.4760, 5.8568, 3.9875},
-    {"Head", 1, 0.0000, 2.8800, 0.1292, 5.8896, 4.5547, 5.4145},
-    {"Head", 0, 0.0000, 2.8277, 0.0653, 4.1169, 4.8485, 4.4841},
-    {"LeftUpperArm", 0, -0.2729, 2.1963, 0.0622, 1.7865, 4.8872, 1.5171},
-    {"LeftLowerArm", 0, -0.3437, 1.8311, 0.0555, 1.6235, 3.4689, 1.6328},
-    {"LeftHand", 0, -0.4480, 1.5941, -0.0159, 1.3816, 1.9821, 1.2716},
-    {"RightUpperArm", 0, 0.2729, 2.1963, 0.0622, 1.7865, 4.8872, 1.5171},
-    {"RightLowerArm", 0, 0.3437, 1.8311, 0.0555, 1.6235, 3.4689, 1.6328},
-    {"RightHand", 0, 0.4480, 1.5941, -0.0159, 1.3816, 1.9821, 1.2716},
-    {"LeftUpperLeg", 0, -0.1228, 1.1130, 0.0397, 2.0620, 5.8120, 2.0324},
-    {"LeftLowerLeg", 0, -0.1172, 0.5434, 0.0807, 1.5887, 7.2963, 2.4081},
-    {"LeftFoot", 0, -0.1203, 0.1067, -0.0326, 1.8032, 2.1337, 3.5884},
-    {"RightUpperLeg", 0, 0.1228, 1.1130, 0.0397, 2.0620, 5.8120, 2.0324},
-    {"RightLowerLeg", 0, 0.1172, 0.5434, 0.0807, 1.5887, 7.2963, 2.4081},
-    {"RightFoot", 0, 0.1203, 0.1067, -0.0326, 1.8032, 2.1337, 3.5884},
-    {"HairBack", 0, 0.0000, 2.6736, 0.2116, 6.0044, 3.1857, 3.8165},
-    {"HairLeft", 0, -0.1955, 2.7564, -0.0237, 1.6193, 2.2259, 2.1684},
-    {"HairRight", 0, 0.1955, 2.7564, -0.0237, 1.6193, 2.2259, 2.1684},
-    {"Bangs", 0, 0.0065, 2.9221, -0.0455, 1.6798, 3.5656, 2.7607},
-    {"EarLeft", 0, -0.2093, 3.0360, 0.1312, 2.2044, 2.1624, 0.9785},
-    {"EarRight", 0, 0.2093, 3.0360, 0.1312, 2.2044, 2.1624, 0.9785},
+    {"LowerTorso", 0, -0.0001, 2.0289, 0.0270, 7.7719, 13.9464, 6.3279},
+    {"Head", 1, 0.0000, 2.8800, 0.1232, 5.8314, 4.5547, 5.4890},
+    {"Head", 0, 0.0000, 2.8301, 0.0653, 4.1169, 4.8004, 4.4841},
+    {"LeftUpperArm", 0, -0.2792, 2.1817, 0.0622, 1.6941, 4.5195, 1.5171},
+    {"LeftLowerArm", 0, -0.3391, 1.8252, 0.0542, 1.7158, 3.3511, 1.6074},
+    {"LeftHand", 0, -0.4471, 1.5927, -0.0155, 1.3481, 1.9243, 1.2510},
+    {"RightUpperArm", 0, 0.2792, 2.1817, 0.0622, 1.6941, 4.5195, 1.5171},
+    {"RightLowerArm", 0, 0.3391, 1.8252, 0.0542, 1.7158, 3.3511, 1.6074},
+    {"RightHand", 0, 0.4471, 1.5927, -0.0155, 1.3481, 1.9243, 1.2510},
+    {"LeftUpperLeg", 0, -0.1236, 1.2661, 0.0359, 2.0775, 8.4890, 1.9869},
+    {"LeftLowerLeg", 0, -0.1206, 0.5230, 0.0811, 1.5188, 6.7090, 2.3997},
+    {"LeftFoot", 0, -0.1203, 0.1004, -0.0326, 1.8032, 2.0079, 3.5884},
+    {"RightUpperLeg", 0, 0.1236, 1.2661, 0.0359, 2.0775, 8.4890, 1.9869},
+    {"RightLowerLeg", 0, 0.1206, 0.5230, 0.0811, 1.5188, 6.7090, 2.3997},
+    {"RightFoot", 0, 0.1203, 0.1004, -0.0326, 1.8032, 2.0079, 3.5884},
+    {"EarLeft", 0, -0.2097, 3.0359, 0.1312, 2.1967, 2.1605, 0.9785},
+    {"EarRight", 0, 0.2097, 3.0359, 0.1312, 2.1967, 2.1605, 0.9785},
+    {"HairR00", 0, 0.0580, 2.6708, 0.3393, 1.1598, 2.8836, 1.2617},
+    {"HairR01", 0, 0.1422, 2.6691, 0.3114, 1.4600, 2.9234, 1.5979},
+    {"HairR02", 0, 0.2058, 2.6678, 0.2505, 1.5489, 2.9226, 1.6964},
+    {"HairR03", 0, 0.2239, 2.6654, 0.1753, 1.5267, 2.9827, 1.3887},
+    {"HairR04", 0, 0.2232, 2.6819, 0.0827, 1.4263, 3.3463, 1.0277},
+    {"HairR05", 0, 0.2128, 2.6818, -0.0031, 1.1521, 3.3499, 1.0358},
+    {"HairR06", 0, 0.1866, 2.7473, -0.0723, 0.8652, 2.0428, 0.7689},
+    {"HairR07", 0, 0.1375, 2.7509, -0.1143, 0.4374, 1.9709, 0.4013},
+    {"HairR10", 0, -0.1375, 2.7509, -0.1143, 0.4374, 1.9709, 0.4013},
+    {"HairR11", 0, -0.1866, 2.7473, -0.0723, 0.8652, 2.0428, 0.7689},
+    {"HairR12", 0, -0.2128, 2.6818, -0.0031, 1.1521, 3.3499, 1.0358},
+    {"HairR13", 0, -0.2232, 2.6819, 0.0827, 1.4263, 3.3463, 1.0277},
+    {"HairR14", 0, -0.2239, 2.6654, 0.1753, 1.5267, 2.9827, 1.3887},
+    {"HairR15", 0, -0.2058, 2.6678, 0.2505, 1.5489, 2.9226, 1.6964},
+    {"HairR16", 0, -0.1422, 2.6691, 0.3114, 1.4600, 2.9234, 1.5979},
+    {"HairR17", 0, -0.0580, 2.6708, 0.3393, 1.1598, 2.8836, 1.2617},
+    {"Bang1", 0, 0.0847, 2.8893, -0.1463, 0.1161, 1.5376, 0.3955},
+    {"Bang2", 0, 0.0388, 2.8550, -0.1574, 0.8491, 2.2235, 0.5227},
+    {"Bang3", 0, -0.0367, 2.8556, -0.1546, 0.8159, 2.2102, 0.5789},
 }
+local HAIR_STRIPS = {
+    {"HairR00", 0.281, "HairR17", "HairR01", 0.243, 0.970},
+    {"HairR01", 0.287, "HairR00", "HairR02", 0.484, 0.875},
+    {"HairR02", 0.286, "HairR01", "HairR03", 0.766, 0.643},
+    {"HairR03", 0.290, "HairR02", "HairR04", 0.942, 0.337},
+    {"HairR04", 0.317, "HairR03", "HairR05", 0.998, -0.057},
+    {"HairR05", 0.327, "HairR04", "HairR06", 0.940, -0.341},
+    {"HairR06", 0.196, "HairR05", "HairR07", 0.761, -0.649},
+    {"HairR07", 0.190, "HairR06", "HairR10", 0.524, -0.852},
+    {"HairR10", 0.190, "HairR07", "HairR11", -0.524, -0.852},
+    {"HairR11", 0.196, "HairR10", "HairR12", -0.761, -0.649},
+    {"HairR12", 0.327, "HairR11", "HairR13", -0.940, -0.341},
+    {"HairR13", 0.317, "HairR12", "HairR14", -0.998, -0.057},
+    {"HairR14", 0.290, "HairR13", "HairR15", -0.942, 0.337},
+    {"HairR15", 0.286, "HairR14", "HairR16", -0.766, 0.643},
+    {"HairR16", 0.287, "HairR15", "HairR17", -0.484, 0.875},
+    {"HairR17", 0.277, "HairR16", "HairR00", -0.159, 0.987},
+    {"Bang1", 0.149, "", "Bang2", 0.366, -0.930},
+    {"Bang2", 0.216, "Bang1", "Bang3", 0.205, -0.979},
+    {"Bang3", 0.217, "Bang2", "", -0.213, -0.977},
+}
+local HAIR_ALL = {}
+for _, d in ipairs(HAIR_STRIPS) do table.insert(HAIR_ALL, d) end
+table.insert(HAIR_ALL, {"EarLeft", 0.17, "", "", -0.7, 0, ear = true})
+table.insert(HAIR_ALL, {"EarRight", 0.17, "", "", 0.7, 0, ear = true})
+
 local ANIME_ORDER = {
-    "LowerTorso", "UpperTorso", "Head",
+    "LowerTorso", "Head",
     "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand",
     "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot",
-    "HairBack", "HairLeft", "HairRight", "Bangs", "EarLeft", "EarRight",
 }
 local ANIME_PARENT = {
-    UpperTorso = "LowerTorso", Head = "UpperTorso",
-    LeftUpperArm = "UpperTorso", LeftLowerArm = "LeftUpperArm", LeftHand = "LeftLowerArm",
-    RightUpperArm = "UpperTorso", RightLowerArm = "RightUpperArm", RightHand = "RightLowerArm",
+    Head = "LowerTorso",
+    LeftUpperArm = "LowerTorso", LeftLowerArm = "LeftUpperArm", LeftHand = "LeftLowerArm",
+    RightUpperArm = "LowerTorso", RightLowerArm = "RightUpperArm", RightHand = "RightLowerArm",
     LeftUpperLeg = "LowerTorso", LeftLowerLeg = "LeftUpperLeg", LeftFoot = "LeftLowerLeg",
     RightUpperLeg = "LowerTorso", RightLowerLeg = "RightUpperLeg", RightFoot = "RightLowerLeg",
-    HairBack = "Head", HairLeft = "Head", HairRight = "Head", Bangs = "Head", EarLeft = "Head", EarRight = "Head",
 }
+local HAIR_SET = {}
+for _, d in ipairs(HAIR_ALL) do
+    table.insert(ANIME_ORDER, d[1])
+    ANIME_PARENT[d[1]] = "Head"
+    HAIR_SET[d[1]] = true
+end
 local ANIME_PIVOT = {
     LowerTorso = Vector3.new(-0.0000, 1.6634, 0.0300),
-    UpperTorso = Vector3.new(-0.0000, 2.0134, 0.0000),
     Head = Vector3.new(-0.0000, 2.5934, 0.0800),
     LeftUpperArm = Vector3.new(-0.2600, 2.3634, 0.0530),
     LeftLowerArm = Vector3.new(-0.3100, 2.0134, 0.0670),
@@ -867,46 +910,48 @@ local ANIME_PIVOT = {
     RightUpperLeg = Vector3.new(0.1100, 1.6634, 0.0300),
     RightLowerLeg = Vector3.new(0.1100, 0.8934, 0.0400),
     RightFoot = Vector3.new(0.1000, 0.1334, 0.1000),
-    HairBack = Vector3.new(-0.0044, 2.8038, 0.2713),
-    HairLeft = Vector3.new(-0.2200, 2.8403, -0.0294),
-    HairRight = Vector3.new(0.2200, 2.8403, -0.0294),
-    Bangs = Vector3.new(0.0018, 3.1000, 0.0664),
     EarLeft = Vector3.new(-0.2057, 2.9514, 0.1124),
     EarRight = Vector3.new(0.2057, 2.9514, 0.1124),
+    HairR00 = Vector3.new(0.0786, 2.8080, 0.3935),
+    HairR01 = Vector3.new(0.1593, 2.8097, 0.3678),
+    HairR02 = Vector3.new(0.2465, 2.8080, 0.2872),
+    HairR03 = Vector3.new(0.2893, 2.8067, 0.1835),
+    HairR04 = Vector3.new(0.2723, 2.8313, 0.0644),
+    HairR05 = Vector3.new(0.2496, 2.8416, -0.0106),
+    HairR06 = Vector3.new(0.1889, 2.8409, -0.0812),
+    HairR07 = Vector3.new(0.1293, 2.8421, -0.1302),
+    HairR10 = Vector3.new(-0.1293, 2.8421, -0.1302),
+    HairR11 = Vector3.new(-0.1889, 2.8409, -0.0812),
+    HairR12 = Vector3.new(-0.2496, 2.8416, -0.0106),
+    HairR13 = Vector3.new(-0.2723, 2.8313, 0.0644),
+    HairR14 = Vector3.new(-0.2893, 2.8067, 0.1835),
+    HairR15 = Vector3.new(-0.2465, 2.8080, 0.2872),
+    HairR16 = Vector3.new(-0.1593, 2.8097, 0.3678),
+    HairR17 = Vector3.new(-0.0507, 2.8036, 0.3959),
+    Bang1 = Vector3.new(0.0831, 2.9618, -0.1311),
+    Bang2 = Vector3.new(0.0470, 2.9599, -0.1445),
+    Bang3 = Vector3.new(-0.0482, 2.9618, -0.1408),
 }
-local HAIR_PARAMS = {
-    HairBack = {K = 60, C = 6.5, kA = 0.0040, kV = 0.014, lim = 0.75, fx = -0.7, ph = 0.0},
-    HairLeft = {K = 85, C = 8, kA = 0.0030, kV = 0.010, lim = 0.6, side = -1, ph = 1.3},
-    HairRight = {K = 85, C = 8, kA = 0.0030, kV = 0.010, lim = 0.6, side = 1, ph = 2.1},
-    Bangs = {K = 130, C = 10, kA = 0.0016, kV = 0.005, lim = 0.4, fx = 0.3, ph = 0.7},
-    EarLeft = {K = 240, C = 12, kA = 0.0014, kV = 0.003, lim = 0.3, side = -1, twitch = true, ph = 0.4},
-    EarRight = {K = 240, C = 12, kA = 0.0014, kV = 0.003, lim = 0.3, side = 1, twitch = true, ph = 2.9},
-}
-local HOLD_FIXED = {
-    RightUpperArm = CFrame.Angles(1.4, 0, -0.04),
-    RightLowerArm = CFrame.Angles(0.25, 0, 0),
-    RightHand = CFrame.new(),
+local MOUNTS = {
+    knife = Vector3.new(0, 2.35, 0.34),
+    gun = Vector3.new(0.30, 1.98, 0.06),
 }
 local BODY_R15 = {
-    HumanoidRootPart = "LowerTorso", LowerTorso = "LowerTorso", UpperTorso = "UpperTorso", Head = "Head",
+    HumanoidRootPart = "LowerTorso", LowerTorso = "LowerTorso", UpperTorso = "LowerTorso", Head = "Head",
     LeftUpperArm = "LeftUpperArm", LeftLowerArm = "LeftLowerArm", LeftHand = "LeftHand",
     RightUpperArm = "RightUpperArm", RightLowerArm = "RightLowerArm", RightHand = "RightHand",
     LeftUpperLeg = "LeftUpperLeg", LeftLowerLeg = "LeftLowerLeg", LeftFoot = "LeftFoot",
     RightUpperLeg = "RightUpperLeg", RightLowerLeg = "RightLowerLeg", RightFoot = "RightFoot",
 }
 local BODY_R6 = {
-    HumanoidRootPart = "LowerTorso", Torso = "UpperTorso", Head = "Head",
+    HumanoidRootPart = "LowerTorso", Torso = "LowerTorso", Head = "Head",
     ["Left Arm"] = "LeftLowerArm", ["Right Arm"] = "RightLowerArm",
     ["Left Leg"] = "LeftLowerLeg", ["Right Leg"] = "RightLowerLeg",
-}
-local REL_SCALE = {
-    UpperTorso = Vector3.new(0.45, 1, 0.6),
-    LowerTorso = Vector3.new(0.45, 1, 0.6),
 }
 
 local AA = {
     active = false, mode = "Jitter", level = "Medium", t = 0, nextT = 0, rootYaw = 0,
-    jp = 0, jy = 0, jr = 0, jl = 0, joints = {}, rng = Random.new(),
+    np = 0, ny = 0, rsp = 0, lsp = 0, jp = 0, jy = 0, jr = 0, jl = 0, joints = {}, rng = Random.new(),
 }
 
 local Toast = new("TextLabel", {
@@ -962,14 +1007,6 @@ local function animeFilesReady()
     end
     if #missing > 0 then
         log("anime: MISSING", #missing, "file(s):", table.concat(missing, ", "))
-        pcall(function()
-            local list = {}
-            for i, path in ipairs(listfiles("")) do
-                if i > 40 then break end
-                table.insert(list, path)
-            end
-            log("anime: workspace root contains:", table.concat(list, ", "))
-        end)
         return false, "missing " .. #missing .. " file(s): extract the new ZynthAnime folder again"
     end
     log("anime: all", #ANIME + 1, "files found")
@@ -1041,6 +1078,12 @@ local function collectParts(container)
     return list
 end
 
+local function weaponKind(name)
+    local n = name:lower()
+    if n:find("knife") or n:find("sword") or n:find("blade") or n:find("scythe") or n:find("axe") then return "knife" end
+    return "gun"
+end
+
 local function attachContainer(st, container, tag, isTool)
     if st.attachedSet[container] or st.failed[container] then return end
     local parts = collectParts(container)
@@ -1093,15 +1136,17 @@ local function attachContainer(st, container, tag, isTool)
     if not body then return end
 
     local group = st.bodyMap[body.Name]
-    local scaleVec = REL_SCALE[group]
-    local entry = {container = container, body = body, group = group, parts = {}, joints = joints, isTool = isTool}
+    local primary = parts[1]
+    local relP = body.CFrame:ToObjectSpace(primary.CFrame)
+    local entry = {
+        container = container, body = body, group = group, parts = {}, joints = joints, isTool = isTool,
+        kind = weaponKind(container.Name), orient = relP - relP.Position, draw = isTool and 0 or 1,
+    }
     for _, p in ipairs(parts) do
-        local rel = body.CFrame:ToObjectSpace(p.CFrame)
-        if scaleVec then
-            local pos = rel.Position
-            rel = CFrame.new(pos.X * scaleVec.X, pos.Y * scaleVec.Y, pos.Z * scaleVec.Z) * (rel - pos)
-        end
-        table.insert(entry.parts, {part = p, rel = rel, anchored = p.Anchored, collide = p.CanCollide})
+        table.insert(entry.parts, {
+            part = p, rel = body.CFrame:ToObjectSpace(p.CFrame), loc = primary.CFrame:ToObjectSpace(p.CFrame),
+            anchored = p.Anchored, collide = p.CanCollide,
+        })
     end
 
     for _, j in ipairs(joints) do pcall(function() j.Enabled = false end) end
@@ -1130,7 +1175,7 @@ local function attachContainer(st, container, tag, isTool)
 
     st.attachedSet[container] = entry
     table.insert(st.attached, entry)
-    log("anime: attached", tag, container.Name, "-> body", body.Name, "| group", group, "| parts", #parts, "| joints disabled", #joints)
+    log("anime: attached", tag, container.Name, "-> body", body.Name, "| kind", entry.kind, "| parts", #parts, "| joints disabled", #joints)
 end
 
 local function scanAttachments(st)
@@ -1151,30 +1196,59 @@ local function sat(x)
     return x > 0 and x or 0
 end
 
+local function gauss(t, mu, sig)
+    local d = ((t - mu + 0.5) % 1) - 0.5
+    return math.exp(-d * d / (2 * sig * sig))
+end
+
+local function gaitLeg(t, amp, run)
+    local hip = math.rad(8 + 22 * math.cos(TAU * t)) * amp
+    local knee = math.rad(5 + 14 * gauss(t, 0.14, 0.07) + (58 + 40 * run) * gauss(t, 0.72, 0.09)) * (0.6 + 0.4 * amp)
+    local footAbs = math.rad(10 * gauss(t, 0.0, 0.035) - 30 * gauss(t, 0.58, 0.05) + 6 * gauss(t, 0.85, 0.1)) * amp
+    return hip, knee, footAbs - (hip - knee)
+end
+
 local function updateHair(st, dt, headWorld, vel)
     local acc = (vel - st.prevVel) / math.max(dt, 0.001)
     st.prevVel = vel
-    if acc.Magnitude > 200 then acc = acc.Unit * 200 end
-    st.acc = st.acc:Lerp(acc, math.min(1, dt * 12))
-    local vL = headWorld:VectorToObjectSpace(vel)
+    if acc.Magnitude > 220 then acc = acc.Unit * 220 end
+    st.acc = st.acc:Lerp(acc, math.min(1, dt * 10))
+    local gdir = headWorld:VectorToObjectSpace(Vector3.new(0, -1, 0))
     local aL = headWorld:VectorToObjectSpace(st.acc)
+    local vL = headWorld:VectorToObjectSpace(vel)
     local flare = math.clamp(-vel.Y * 0.012, 0, 0.5)
     local sdt = math.min(dt, 1 / 30)
     local out = {}
-    for g, p in pairs(HAIR_PARAMS) do
+    for _, d in ipairs(HAIR_ALL) do
+        local g = d[1]
         local h = st.hair[g]
-        local tx = math.clamp(p.kA * aL.Z + p.kV * vL.Z, -p.lim, p.lim) + 0.015 * math.sin(st.t * 1.6 + p.ph)
-        local tz = math.clamp(-(p.kA * aL.X + p.kV * vL.X), -p.lim, p.lim) + 0.012 * math.cos(st.t * 1.3 + p.ph)
-        if p.side then tz = tz + p.side * flare end
-        if p.fx then tx = tx + p.fx * flare end
-        if p.twitch and st.t > st.twitchAt[g] then
-            h.vz = h.vz + (math.random() - 0.5) * 16
-            st.twitchAt[g] = st.t + 2.5 + math.random() * 4
+        local radial = Vector3.new(d[5], 0, d[6])
+        local geff = gdir * 70 - aL * 0.4 - vL * 1.0 + radial * (70 * flare * 1.3)
+        local down = -math.min(geff.Y, -18)
+        local ex = math.clamp(-geff.Z / down, -0.9, 0.9)
+        local ez = math.clamp(geff.X / down, -0.9, 0.9)
+        if d.ear then
+            ex, ez = ex * 0.35, ez * 0.35
+            if st.t > st.twitchAt[g] then
+                h.vz = h.vz + (math.random() - 0.5) * 14
+                st.twitchAt[g] = st.t + 3 + math.random() * 5
+            end
         end
-        h.vx = h.vx + ((tx - h.x) * p.K - h.vx * p.C) * sdt
-        h.x = math.clamp(h.x + h.vx * sdt, -p.lim * 1.3, p.lim * 1.3)
-        h.vz = h.vz + ((tz - h.z) * p.K - h.vz * p.C) * sdt
-        h.z = math.clamp(h.z + h.vz * sdt, -p.lim * 1.3, p.lim * 1.3)
+        local w2 = math.clamp(70 / math.max(d[2] * st.scale, 0.15) * h.var, 40, 520)
+        local c = 2 * 0.55 * math.sqrt(w2)
+        local ax, az = 0, 0
+        local pn, nn = st.hair[d[3]], st.hair[d[4]]
+        if pn and nn then
+            ax = (pn.x + nn.x) * 0.5 - h.x
+            az = (pn.z + nn.z) * 0.5 - h.z
+        elseif pn or nn then
+            local o = pn or nn
+            ax, az = o.x - h.x, o.z - h.z
+        end
+        h.vx = h.vx + (w2 * (ex - h.x) - c * h.vx + 18 * ax) * sdt
+        h.vz = h.vz + (w2 * (ez - h.z) - c * h.vz + 18 * az) * sdt
+        h.x = math.clamp(h.x + h.vx * sdt, -0.85, 0.85)
+        h.z = math.clamp(h.z + h.vz * sdt, -0.85, 0.85)
         out[g] = CFrame.Angles(h.x, 0, h.z)
     end
     return out
@@ -1186,6 +1260,7 @@ local function animeStep(dt)
     dt = math.clamp(dt, 0.001, 0.1)
 
     local hum = st.hum
+    local hrpCF = st.hrp.CFrame
     local vel = st.hrp.AssemblyLinearVelocity
     local speed = Vector3.new(vel.X, 0, vel.Z).Magnitude
     local sitting = hum and hum.Sit or false
@@ -1202,112 +1277,128 @@ local function animeStep(dt)
     if air then st.lastVy = vel.Y end
     st.landT = math.max(0, st.landT - dt)
 
-    local targetAmp = moving and math.clamp(speed / 16, 0.3, 1.8) or 0
-    st.amp = st.amp + (targetAmp - st.amp) * math.min(1, dt * 8)
-    st.phase = st.phase + dt * speed * 0.62
+    local look = hrpCF.LookVector
+    local fwd = vel:Dot(look)
+    local dirSign = (fwd >= -0.25 * speed) and 1 or -1
+    local ang = math.atan2(-look.X, -look.Z)
+    local dAng = ang - st.prevAng
+    if dAng > math.pi then dAng = dAng - TAU elseif dAng < -math.pi then dAng = dAng + TAU end
+    st.prevAng = ang
+    st.wy = st.wy + (dAng / dt - st.wy) * math.min(1, dt * 8)
+
+    local amp = math.clamp(speed / 10.7, 0.5, 1.5)
+    local run = math.clamp((speed - 22) / 8, 0, 1)
+    amp = amp * (1 + 0.35 * run)
+    if math.abs(fwd) < 0.6 * speed then amp = amp * 0.85 end
+    st.w = st.w + ((moving and 1 or 0) - st.w) * math.min(1, dt * 7)
+    local w = st.w
+    if moving then
+        local omega = math.clamp(speed / (st.scale * 0.40 * amp), 2.5, 24)
+        st.phase = (st.phase + dt * omega * dirSign) % TAU
+    end
+    local idle = 1 - w
+    local breathe = math.sin(st.t * 1.8)
+    local sway = math.sin(st.t * 0.6)
 
     local holding = st.char:FindFirstChildOfClass("Tool") ~= nil
     st.hold = st.hold + ((holding and 1 or 0) - st.hold) * math.min(1, dt * 7)
 
-    local a = st.amp
-    local am = math.min(a, 1.5)
-    local ph = st.phase
-    local s, c = math.sin(ph), math.cos(ph)
-    local w = math.min(1, a / 0.3)
-    local run = math.clamp((a - 1) / 0.6, 0, 1)
-    local idle = 1 - w
-    local sway = math.sin(st.t * 0.9)
-    local breathe = math.sin(st.t * 1.8)
+    local tL = (st.phase / TAU) % 1
+    local tR = (tL + 0.5) % 1
+    local hipL, kneeL, footL = gaitLeg(tL, amp, run)
+    local hipR, kneeR, footR = gaitLeg(tR, amp, run)
+    hipL, hipR = hipL * w, hipR * w
+    kneeL, kneeR = kneeL * w + 0.04 * idle, kneeR * w + 0.04 * idle
+    footL, footR = footL * w, footR * w
 
-    local legAmp = (0.36 + 0.30 * am) * w
-    local kneePk = (0.6 + 0.5 * am) * w
-    local armAmp = (0.28 + 0.30 * am) * w
+    local c0, s0 = math.cos(st.phase), math.sin(st.phase)
+    local armA = math.rad(18) * amp * w
+    local bL, bR = -armA * c0 + 0.03 * sway * idle, armA * c0 - 0.03 * sway * idle
+    local eBase = math.rad(14) + (math.rad(14) * amp + math.rad(55) * run) * w
+    local eL = eBase + math.rad(16) * w * sat(-c0)
+    local eR = eBase + math.rad(16) * w * sat(c0)
+    local zL, zR = -0.05 - 0.012 * breathe * idle, 0.05 + 0.012 * breathe * idle
 
-    local aL, aR = legAmp * s, -legAmp * s
-    local kL = 0.05 + 0.10 * w * sat(s) + kneePk * sat(math.cos(ph + 0.2)) ^ 2
-    local kR = 0.05 + 0.10 * w * sat(-s) + kneePk * sat(math.cos(ph + math.pi + 0.2)) ^ 2
-    local fL = -(aL - kL) * 0.85 - 0.3 * w * math.min(a, 1.2) * sat(-s)
-    local fR = -(aR - kR) * 0.85 - 0.3 * w * math.min(a, 1.2) * sat(s)
-    local bL, bR = -armAmp * s, armAmp * s
-    local eL = 0.18 + 0.30 * w + 0.25 * w * sat(bL / math.max(armAmp, 0.01)) + 0.5 * run
-    local eR = 0.18 + 0.30 * w + 0.25 * w * sat(bR / math.max(armAmp, 0.01)) + 0.5 * run
-    local zL, zR = -0.10 - 0.02 * w - 0.015 * breathe * idle, 0.10 + 0.02 * w + 0.015 * breathe * idle
-    local lean = -(0.03 + 0.07 * am) * w - 0.05 * run
-    local hipYaw = 0.07 * am * s * w + 0.02 * sway * idle
-    local hipRoll = 0.035 * am * c * w + 0.014 * sway * idle
-    local utPitch = 0.012 * breathe
-    local utYaw = -0.12 * am * s * w
-    local utRoll = -0.6 * hipRoll
-    local headYaw = 0.05 * am * s * w + 0.025 * math.sin(st.t * 0.7) * idle
+    local torsoYaw = math.rad(4) * amp * c0 * w + 0.02 * sway * idle
+    local pelvisYaw = -math.rad(5) * amp * c0 * w
+    local legYaw = pelvisYaw - torsoYaw
+    local turnRoll = math.clamp(st.wy * 0.04, -0.15, 0.15) * math.min(speed / 16, 1)
+    local torsoRoll = math.rad(2.5) * amp * s0 * w + 0.012 * sway * idle + turnRoll
+    local lean = -(math.rad(2) + math.rad(5) * amp) * w - math.rad(5) * run * w + 0.012 * breathe * idle
+    local headYaw = -torsoYaw * 0.7 + 0.04 * math.sin(st.t * 0.5) * idle
     local headPitch = -lean * 0.6 + 0.012 * math.sin(st.t * 1.1) * idle
-    bL = bL + 0.03 * sway * idle
-    bR = bR - 0.03 * sway * idle
 
     if sitting then
-        aL, aR, kL, kR = 1.45, 1.45, 1.45, 1.45
-        fL, fR = 0, 0
+        hipL, hipR, kneeL, kneeR, footL, footR = 1.45, 1.45, 1.45, 1.45, 0, 0
         bL, bR, eL, eR = 0.5, 0.5, 1.0, 1.0
-        lean, hipYaw, hipRoll, utYaw, utRoll, headYaw, headPitch = 0, 0, 0, 0, 0, 0, 0
+        lean, torsoYaw, legYaw, torsoRoll, headYaw, headPitch = 0, 0, 0, 0, 0, 0
     elseif air then
         local r = math.clamp(vel.Y / 14, 0, 1)
         local f = math.clamp(-vel.Y / 14, 0, 1)
         local ap = 1 - math.max(r, f)
-        aL = r * 0.6 + ap * 0.28 + f * 0.22
-        aR = r * -0.15 + ap * 0.02 + f * -0.12
-        kL = r * 0.9 + ap * 0.5 + f * 0.28
-        kR = r * 0.55 + ap * 0.4 + f * 0.2
-        fL = r * -0.3 + ap * -0.1 + f * 0.2
-        fR = r * -0.2 + ap * -0.1 + f * 0.2
-        bL = r * 1.45 + ap * 0.5 + f * 0.25
-        bR = r * 1.45 + ap * 0.5 + f * 0.25
-        zL = r * -0.25 + ap * -0.7 + f * -0.95
-        zR = r * 0.25 + ap * 0.7 + f * 0.95
-        eL = r * 0.4 + ap * 0.25 + f * 0.15
+        hipL = r * 0.75 + ap * 0.3 + f * 0.22
+        hipR = r * -0.12 + ap * 0.02 + f * -0.14
+        kneeL = r * 1.1 + ap * 0.5 + f * 0.28
+        kneeR = r * 0.75 + ap * 0.4 + f * 0.2
+        footL = r * -0.25 + ap * -0.1 + f * 0.15
+        footR = r * -0.35 + ap * -0.1 + f * 0.15
+        bL = r * 1.2 + ap * 0.5 + f * 0.25
+        bR = r * 1.2 + ap * 0.5 + f * 0.25
+        zL = r * -0.35 + ap * -0.7 + f * -0.95
+        zR = r * 0.35 + ap * 0.7 + f * 0.95
+        eL = r * 0.5 + ap * 0.25 + f * 0.15
         eR = eL
-        lean = r * -0.06 + f * 0.03
-        hipYaw, hipRoll, utYaw, utRoll, headYaw = 0, 0, 0, 0, 0
+        lean = r * -0.05 + f * 0.03
+        torsoYaw, legYaw, torsoRoll, headYaw = 0, 0, 0, 0
         headPitch = -lean * 0.6
     elseif st.landT > 0 then
         local k = st.landT / 0.34
         k = k * k * (3 - 2 * k)
         local ls = st.landStr * k
-        aL, aR = aL + 0.55 * ls, aR + 0.5 * ls
-        kL, kR = kL + 0.95 * ls, kR + 0.95 * ls
-        fL, fR = fL - 0.35 * ls, fR - 0.35 * ls
+        hipL, hipR = hipL + 0.55 * ls, hipR + 0.5 * ls
+        kneeL, kneeR = kneeL + 0.95 * ls, kneeR + 0.95 * ls
+        footL, footR = footL - 0.35 * ls, footR - 0.35 * ls
         lean = lean - 0.22 * ls
         bL, bR = bL + 0.4 * ls, bR + 0.4 * ls
         headPitch = -lean * 0.6
     end
 
     local target = {
-        lean = lean, hipYaw = hipYaw, hipRoll = hipRoll, utPitch = utPitch, utYaw = utYaw, utRoll = utRoll,
-        headYaw = headYaw, headPitch = headPitch,
-        aL = aL, aR = aR, kL = kL, kR = kR, fL = fL, fR = fR,
+        lean = lean, torsoYaw = torsoYaw, legYaw = legYaw, torsoRoll = torsoRoll, headYaw = headYaw, headPitch = headPitch,
+        hipL = hipL, hipR = hipR, kneeL = kneeL, kneeR = kneeR, footL = footL, footR = footR,
         bL = bL, bR = bR, zL = zL, zR = zR, eL = eL, eR = eR,
     }
-    local blend = math.min(1, dt * (air and 9 or 13))
+    local blend = math.min(1, dt * (air and 9 or 14))
     local cur = st.cur
     for k, v in pairs(target) do cur[k] = cur[k] + (v - cur[k]) * blend end
 
+    local aaOn = AA.active
+    local rsPitch = cur.bR + (aaOn and AA.rsp or 0)
+    local lsPitch = cur.bL + (aaOn and AA.lsp or 0)
+    local rsElbow = cur.eR
+    if aaOn then
+        rsPitch = rsPitch + (1.4 - cur.bR) * st.hold
+        rsElbow = cur.eR + (0.25 - cur.eR) * st.hold
+    end
+
     local localRot = {
-        LowerTorso = CFrame.Angles(cur.lean, cur.hipYaw, cur.hipRoll),
-        UpperTorso = CFrame.Angles(cur.utPitch, cur.utYaw, cur.utRoll),
-        Head = CFrame.Angles(cur.headPitch, cur.headYaw, 0),
-        LeftUpperArm = CFrame.Angles(cur.bL, 0, cur.zL), LeftLowerArm = CFrame.Angles(cur.eL, 0, 0), LeftHand = CFrame.new(),
-        RightUpperArm = CFrame.Angles(cur.bR, 0, cur.zR), RightLowerArm = CFrame.Angles(cur.eR, 0, 0), RightHand = CFrame.new(),
-        LeftUpperLeg = CFrame.Angles(cur.aL, 0, 0), LeftLowerLeg = CFrame.Angles(-cur.kL, 0, 0), LeftFoot = CFrame.Angles(cur.fL, 0, 0),
-        RightUpperLeg = CFrame.Angles(cur.aR, 0, 0), RightLowerLeg = CFrame.Angles(-cur.kR, 0, 0), RightFoot = CFrame.Angles(cur.fR, 0, 0),
+        LowerTorso = CFrame.Angles(cur.lean, cur.torsoYaw + (aaOn and AA.rootYaw or 0), cur.torsoRoll),
+        Head = CFrame.Angles(cur.headPitch + (aaOn and AA.np or 0), cur.headYaw + (aaOn and AA.ny or 0), 0),
+        LeftUpperArm = CFrame.Angles(lsPitch, 0, cur.zL), LeftLowerArm = CFrame.Angles(cur.eL, 0, 0), LeftHand = CFrame.new(),
+        RightUpperArm = CFrame.Angles(rsPitch, 0, cur.zR), RightLowerArm = CFrame.Angles(rsElbow, 0, 0), RightHand = CFrame.new(),
+        LeftUpperLeg = CFrame.Angles(0, cur.legYaw, 0) * CFrame.Angles(cur.hipL, 0, 0),
+        LeftLowerLeg = CFrame.Angles(-cur.kneeL, 0, 0), LeftFoot = CFrame.Angles(cur.footL, 0, 0),
+        RightUpperLeg = CFrame.Angles(0, cur.legYaw, 0) * CFrame.Angles(cur.hipR, 0, 0),
+        RightLowerLeg = CFrame.Angles(-cur.kneeR, 0, 0), RightFoot = CFrame.Angles(cur.footR, 0, 0),
     }
 
-    local hrpCF = st.hrp.CFrame
     local inv = hrpCF:Inverse()
-
     local W, R = {}, {}
     local hairRot
     for _, g in ipairs(ANIME_ORDER) do
         local par = ANIME_PARENT[g]
         local rot
-        if HAIR_PARAMS[g] then
+        if HAIR_SET[g] then
             if not hairRot then hairRot = updateHair(st, dt, hrpCF * R.Head, vel) end
             W[g] = W[par] + R[par] * (st.scale * (ANIME_PIVOT[g] - ANIME_PIVOT[par]))
             rot = R[par] * hairRot[g]
@@ -1319,13 +1410,9 @@ local function animeStep(dt)
             rot = localRot[g]
         end
         local orig = st.rightOrig[g]
-        if orig and st.hold > 0.001 then
-            if AA.active then
-                rot = rot:Lerp(R[par] * HOLD_FIXED[g], st.hold)
-            else
-                local rel = inv * orig.CFrame
-                rot = rot:Lerp(rel - rel.Position, st.hold)
-            end
+        if orig and st.hold > 0.001 and not aaOn then
+            local rel = inv * orig.CFrame
+            rot = rot:Lerp(rel - rel.Position, st.hold)
         end
         R[g] = rot
     end
@@ -1334,7 +1421,7 @@ local function animeStep(dt)
     if not air and not sitting then
         local restAnkle = st.origin.Y + st.scale * ANIME_PIVOT.LeftFoot.Y
         local lowest = math.min(W.LeftFoot.Y, W.RightFoot.Y)
-        shift = Vector3.new(0, restAnkle - lowest, 0)
+        shift = Vector3.new(0.03 * st.scale * s0 * w * amp, restAnkle - lowest, 0)
     end
 
     for _, item in ipairs(st.pieces) do
@@ -1349,7 +1436,11 @@ local function animeStep(dt)
         scanAttachments(st)
     end
 
-    local frames = {}
+    local function groupCF(g, point)
+        point = point or st.center[g]
+        return hrpCF * (CFrame.new(W[g] + shift + R[g] * (st.scale * (point - ANIME_PIVOT[g]))) * R[g])
+    end
+
     for i = #st.attached, 1, -1 do
         local entry = st.attached[i]
         local gone = not entry.container.Parent or (entry.isTool and entry.container.Parent ~= st.char)
@@ -1360,15 +1451,18 @@ local function animeStep(dt)
             table.remove(st.attached, i)
             log("anime: released", entry.container.Name)
         else
-            local g = entry.group
-            local frame = frames[g]
-            if not frame then
-                local center = st.center[g]
-                frame = hrpCF * (CFrame.new(W[g] + shift + R[g] * (st.scale * (center - ANIME_PIVOT[g]))) * R[g])
-                frames[g] = frame
-            end
-            for _, e in ipairs(entry.parts) do
-                if e.part.Parent then e.part.CFrame = frame * e.rel end
+            local mount = groupCF("LowerTorso", MOUNTS[entry.kind]) * entry.orient
+            if entry.isTool then
+                entry.draw = math.min(1, entry.draw + dt / 0.3)
+                local e = entry.draw * entry.draw * (3 - 2 * entry.draw)
+                local hand = groupCF(entry.group)
+                for _, p in ipairs(entry.parts) do
+                    if p.part.Parent then p.part.CFrame = (mount * p.loc):Lerp(hand * p.rel, e) end
+                end
+            else
+                for _, p in ipairs(entry.parts) do
+                    if p.part.Parent then p.part.CFrame = mount * p.loc end
+                end
             end
         end
     end
@@ -1429,18 +1523,20 @@ local function applyAnime()
     end
 
     local cur = {}
-    for _, k in ipairs({"lean", "hipYaw", "hipRoll", "utPitch", "utYaw", "utRoll", "headYaw", "headPitch",
-        "aL", "aR", "kL", "kR", "fL", "fR", "bL", "bR", "zL", "zR", "eL", "eR"}) do
+    for _, k in ipairs({"lean", "torsoYaw", "legYaw", "torsoRoll", "headYaw", "headPitch",
+        "hipL", "hipR", "kneeL", "kneeR", "footL", "footR", "bL", "bR", "zL", "zR", "eL", "eR"}) do
         cur[k] = 0
     end
     local hair, twitchAt = {}, {}
-    for g in pairs(HAIR_PARAMS) do
-        hair[g] = {x = 0, z = 0, vx = 0, vz = 0}
-        twitchAt[g] = 1 + math.random() * 3
+    for _, d in ipairs(HAIR_ALL) do
+        hair[d[1]] = {x = 0, z = 0, vx = 0, vz = 0, var = 0.85 + math.random() * 0.4}
+        twitchAt[d[1]] = 1 + math.random() * 3
     end
+    local look = hrp.CFrame.LookVector
     animeState = {
         char = char, hrp = hrp, hum = hum, pieces = pieces, center = center, scale = scale, cur = cur,
-        t = 0, phase = 0, amp = 0, hold = 0, scanT = 1, wasAir = false, lastVy = 0, landT = 0, landStr = 0,
+        t = 0, phase = 0, w = 0, hold = 0, scanT = 1, wasAir = false, lastVy = 0, landT = 0, landStr = 0,
+        prevAng = math.atan2(-look.X, -look.Z), wy = 0,
         origin = Vector3.new(0, footBottom, 0), bodyMap = isR15 and BODY_R15 or BODY_R6,
         rightOrig = rightOrig, attached = {}, attachedSet = {}, failed = {}, seen = {},
         hair = hair, twitchAt = twitchAt, prevVel = hrp.AssemblyLinearVelocity, acc = Vector3.zero,
@@ -1484,10 +1580,23 @@ end)
 
 local AA_LEVEL_MUL = {Low = 0.55, Medium = 1, High = 1.5}
 local AA_LEVEL_RATE = {Low = 7, Medium = 14, High = 28}
-local AA_NAMES = {
-    Neck = "neck", RightShoulder = "rs", ["Right Shoulder"] = "rs", LeftShoulder = "ls", ["Left Shoulder"] = "ls",
-    Root = "root", RootJoint = "root",
-}
+
+local function aaKey(j)
+    local p0, p1
+    if j:IsA("Motor6D") then
+        p0, p1 = j.Part0, j.Part1
+    elseif j:IsA("AnimationConstraint") then
+        local a0, a1 = j.Attachment0, j.Attachment1
+        p0, p1 = a0 and a0.Parent, a1 and a1.Parent
+    end
+    if not (p0 and p1) then return nil end
+    local n = p1.Name
+    if n == "Head" then return "neck" end
+    if n == "RightUpperArm" or n == "Right Arm" then return "rs" end
+    if n == "LeftUpperArm" or n == "Left Arm" then return "ls" end
+    if n == "LowerTorso" or (n == "Torso" and p0.Name == "HumanoidRootPart") then return "root" end
+    return nil
+end
 
 local function aaBase(j)
     if j:IsA("Motor6D") then return j.C0 end
@@ -1507,15 +1616,18 @@ local function aaCollect(char)
     AA.joints = {}
     AA.char = char
     for _, d in ipairs(char:GetDescendants()) do
-        local key = AA_NAMES[d.Name]
-        if key and (d:IsA("Motor6D") or d:IsA("AnimationConstraint")) then
-            local base = aaBase(d)
-            if base then AA.joints[key] = {joint = d, base = base} end
+        if d:IsA("Motor6D") or d:IsA("AnimationConstraint") then
+            local key = aaKey(d)
+            if key and not AA.joints[key] then
+                local base = aaBase(d)
+                if base then AA.joints[key] = {joint = d, base = base, class = d.ClassName} end
+            end
         end
     end
     local names = {}
-    for k in pairs(AA.joints) do table.insert(names, k) end
+    for k, e in pairs(AA.joints) do table.insert(names, k .. "(" .. e.class .. ")") end
     log("anti-aim: joints found:", #names > 0 and table.concat(names, ", ") or "none")
+    return #names
 end
 
 local function aaRestore()
@@ -1525,7 +1637,7 @@ local function aaRestore()
 end
 
 local function aaStep(dt)
-    if not AA.active or not AA.char or not AA.char.Parent then return end
+    if not AA.active then return end
     AA.t = AA.t + dt
     local L, rate = AA_LEVEL_MUL[AA.level], AA_LEVEL_RATE[AA.level]
     local mode = AA.mode
@@ -1536,7 +1648,9 @@ local function aaStep(dt)
         np, rsp, lsp = 0.85 * L, -1.3 * L, -1.3 * L
     end
     if mode == "Spin" or mode == "Mix" then
-        AA.rootYaw = (AA.rootYaw + dt * rate * 0.9) % (math.pi * 2)
+        AA.rootYaw = (AA.rootYaw + dt * rate * 0.9) % TAU
+    else
+        AA.rootYaw = 0
     end
     if mode == "Jitter" or mode == "Mix" then
         if AA.t >= AA.nextT then
@@ -1548,6 +1662,10 @@ local function aaStep(dt)
         end
         np, ny, rsp, lsp = AA.jp, AA.jy, AA.jr, AA.jl
     end
+    AA.np, AA.ny, AA.rsp, AA.lsp = np, ny, rsp, lsp
+
+    local char = LocalPlayer.Character
+    if char and char ~= AA.char then aaCollect(char) end
     local j = AA.joints
     if j.neck then aaSet(j.neck.joint, j.neck.base * CFrame.Angles(np, ny, 0)) end
     if j.rs then aaSet(j.rs.joint, j.rs.base * CFrame.Angles(rsp, 0, 0)) end
@@ -1558,10 +1676,11 @@ end
 local function aaEnable()
     if AA.active then return end
     local char = LocalPlayer.Character
-    if char then aaCollect(char) end
+    local found = char and aaCollect(char) or 0
     AA.active = true
     AA.conn = RunService.Stepped:Connect(function(_, dt) aaStep(dt) end)
     log("anti-aim: ON | mode", AA.mode, "| level", AA.level)
+    if found == 0 then notify("Anti-Aim: no joints found on your character, only the model will show it") end
 end
 
 local function aaDisable()
@@ -1572,6 +1691,7 @@ local function aaDisable()
         AA.conn = nil
     end
     aaRestore()
+    AA.np, AA.ny, AA.rsp, AA.lsp, AA.rootYaw = 0, 0, 0, 0, 0
     log("anti-aim: OFF")
 end
 
